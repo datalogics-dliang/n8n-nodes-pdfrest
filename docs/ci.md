@@ -240,11 +240,12 @@ to authenticate exclusively through OIDC trusted publishing. Do not configure
 an npm publishing token or OTP in GitHub. The n8n node CLI publishes with
 provenance and the public access configured in `package.json`.
 
-After the publish command succeeds, the job allows up to 20 minutes for npm's
-publish-time scan to make the version visible in the registry. This wait runs
-in a separate `verify-published` job after publication succeeds. The verification
-job has a 35-minute deadline, read-only repository permission, and no publishing
-environment or OIDC permission.
+After publication succeeds, the separate `verify-published` job verifies the
+exact published version directly, without a registry visibility polling step.
+The job has a 35-minute deadline, read-only repository permission, and no
+publishing environment or OIDC permission. If the registry cannot yet serve
+the package or its attestations, verification fails; rerun the failed
+verification job once the registry is ready, without republishing.
 
 Verification checks the exact version's Sigstore provenance using the verifier
 bundled with pinned npm 11.19.0. It requires a valid signature with the GitHub
