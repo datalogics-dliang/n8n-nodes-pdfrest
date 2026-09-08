@@ -241,10 +241,24 @@ an npm publishing token or OTP in GitHub. The n8n node CLI publishes with
 provenance and the public access configured in `package.json`.
 
 After the publish command succeeds, the job allows up to 20 minutes for npm's
-publish-time scan to make the version visible in the registry. The publish job
-has a 35-minute deadline so the pinned n8n community package scanner can then
-check that exact version. The job explicitly fails unless the scanner reports
-success.
+publish-time scan to make the version visible in the registry. This wait runs
+in a separate `verify-published` job after publication succeeds. The verification
+job has a 35-minute deadline, read-only repository permission, and no publishing
+environment or OIDC permission.
+
+Verification checks the exact version's Sigstore provenance using the verifier
+bundled with pinned npm 11.19.0. It requires a valid signature with the GitHub
+Actions issuer and the release workflow identity, then matches the attested
+package name/version and SHA-512 digest to npm metadata and checks the source
+repository, release tag, workflow path, and checked-out commit. Missing,
+unsupported, invalid, or mismatched provenance fails the job. The pinned n8n
+community scanner then checks that exact version; both checks must pass.
+
+If verification fails after publication succeeds, rerun only the failed
+`verify-published` job (or use GitHub's re-run failed jobs option). Do not rerun
+all jobs: npm publication is already complete and the version cannot be
+republished. Investigate a provenance mismatch before declaring the release
+ready for n8n verification; do not bypass the check.
 
 Before creating a release tag, both parts of the release ownership gate must be
 confirmed:
