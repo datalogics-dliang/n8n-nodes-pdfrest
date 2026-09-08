@@ -1,6 +1,5 @@
 import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
 import { pdfRestDescription } from './actions';
-import { testPdfRestCredentials } from './credentialTest';
 
 export class PdfRest implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +24,6 @@ export class PdfRest implements INodeType {
 			{
 				name: 'pdfRestApi',
 				required: true,
-				testedBy: 'pdfRest',
 			},
 		],
 		requestDefaults: {
@@ -36,11 +34,5 @@ export class PdfRest implements INodeType {
 			},
 		},
 		properties: pdfRestDescription,
-	};
-
-	methods = {
-		credentialTest: {
-			pdfRest: testPdfRestCredentials,
-		},
 	};
 }
