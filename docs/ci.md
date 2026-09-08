@@ -150,6 +150,14 @@ The live harness builds all n8n state from scratch on each run:
    and environment-managed owner.
 3. Authenticate the owner, create a short-lived n8n API key, and create the
    `pdfRestApi` credential through `@n8n/cli`.
+   Use the owner session to call n8n's `/rest/credentials/test` endpoint for
+   that credential. Require `data.status` to be `OK`, proving n8n discovers and
+   executes the credential-level `GET /up` test before endpoint workflows run.
+   This request has a 60-second timeout and no retries. A transport failure,
+   malformed response, or non-OK test result fails the harness immediately.
+   Credential-test payloads and raw responses stay in the secret-bearing
+   runtime directory and are deleted by the cleanup trap; only a fixed safe
+   pass/fail message reaches Actions output.
 4. Copy the committed fixtures and generate a one-day signing certificate,
    PFX file, and random password in the temporary copy.
 5. Render temporary workflows with the new credential ID, absolute fixture
