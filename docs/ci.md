@@ -258,12 +258,24 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Before the release candidate is declared ready for n8n verification, also run
-the required scan against the package available in npm:
+The community package scan is a post-publication release check. It scans the
+published npm package, not the local worktree or PR branch, so do not use it as
+a PR validation gate or evidence for unpublished changes. PR validation uses
+build, lint, unit/API-contract tests, and applicable CI checks.
+
+After GitHub Actions publishes the release, the scan must pass against that
+exact version before it is declared ready for n8n verification. The publish
+workflow performs this check automatically. To repeat it manually, use Node.js
+22.22.0 and the same pinned scanner version as the publish workflow:
 
 ```bash
-npx @n8n/scan-community-package @pdfrest/n8n-nodes-pdfrest
+PACKAGE_VERSION=0.2.0 # Replace with the exact published release version
+npx --yes @n8n/scan-community-package@0.32.0 "@pdfrest/n8n-nodes-pdfrest@$PACKAGE_VERSION"
 ```
+
+Omitting the package version scans npm's `latest` version, which may not be the
+intended release. A scanner installation failure is a tooling failure, not a
+completed package scan, and must not be reported as a passing scan.
 
 ## Versioning Policy
 
