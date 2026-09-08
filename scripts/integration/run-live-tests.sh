@@ -235,6 +235,10 @@ if [[ -z "$credential_id" ]]; then
 	exit 1
 fi
 
+# Exercise n8n's credential-level test discovery before quota-consuming workflows.
+bash "$script_directory/test-credential.sh" \
+	"$server_url" "$cookie_jar" "$credential_id" "$credential_payload" "$runtime_root"
+
 export PDFREST_CREDENTIAL_ID="$credential_id"
 export PDFREST_CREDENTIAL_NAME='pdfRest CI'
 export PDFREST_TEST_FIXTURE_DIR="$fixture_directory"

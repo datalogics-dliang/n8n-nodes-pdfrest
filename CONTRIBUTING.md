@@ -91,11 +91,11 @@ Do not use a personal API key. The harness creates isolated n8n state and
 temporary credentials, workflows, fixtures, and signing material. See the
 [CI and release runbook](docs/ci.md) for optional URL and base-URL variables.
 
-Before declaring a release candidate ready for n8n verification, run:
-
-```bash
-npx @n8n/scan-community-package @pdfrest/n8n-nodes-pdfrest
-```
+The community package scan is a post-publication release check, not a PR
+validation gate. It scans the package available in npm and cannot validate
+unpublished changes. After GitHub Actions publishes a release, require a passing
+scan of that exact version before declaring it ready for n8n verification. See
+the [CI and release runbook](docs/ci.md) for the pinned command.
 
 ## Workflow Fixtures
 

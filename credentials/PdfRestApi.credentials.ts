@@ -1,4 +1,10 @@
-import type { IAuthenticate, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+	Icon,
+} from 'n8n-workflow';
 import { CUSTOM_BASE_URL, normalizePdfRestRequestUrl } from '../nodes/PdfRest/helpers/baseUrl';
 
 const apiKeyDescription =
@@ -106,8 +112,7 @@ export class PdfRestApi implements ICredentialType {
 			default: 'domains',
 			description:
 				'Control which domains this credential can be used with in HTTP Request or GraphQL nodes',
-			hint:
-				'Control which domains this credential can be used with in HTTP Request or GraphQL nodes. Self-Hosted or Container users may add their own domain to the list.',
+			hint: 'Control which domains this credential can be used with in HTTP Request or GraphQL nodes. Self-Hosted or Container users may add their own domain to the list.',
 		},
 		{
 			displayName: 'Allowed Domains',
@@ -123,6 +128,13 @@ export class PdfRestApi implements ICredentialType {
 			},
 		},
 	];
+
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: '={{($credentials.baseUrl === "custom" ? $credentials.customBaseUrl : $credentials.baseUrl) + "/up"}}',
+		},
+	};
 
 	authenticate: IAuthenticate = async (credentials, requestOptions) => {
 		requestOptions.url = normalizePdfRestRequestUrl(requestOptions.url, credentials);

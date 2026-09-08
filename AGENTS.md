@@ -24,12 +24,12 @@ The public node display name is `pdfRest API Toolkit`. Do not shorten it to
 - Use English for all user-visible and repository-facing content: UI copy,
   errors, help text, documentation, code comments, and commits.
 - Do not duplicate an existing n8n node. Check this before expanding scope.
-- Before a release candidate, run:
-
-  ```bash
-  npx @n8n/scan-community-package @pdfrest/n8n-nodes-pdfrest
-  ```
-
+- After GitHub Actions publishes a release, require the community package scan
+  to pass against that exact published version before declaring it ready for
+  n8n verification. Follow `docs/ci.md` for the pinned scanner command.
+- A scan by npm package name checks the published package, not the local
+  worktree or pull request. Do not run it as a PR validation gate or report its
+  result as evidence for unpublished changes.
 - Never publish from a developer machine. Releases must be published by GitHub
   Actions with an npm provenance statement. Do not use `npm publish` locally.
 
@@ -127,9 +127,10 @@ not add a token fallback or publish locally.
 - Use Vitest for unit and API-contract tests. Cover pure helper behavior and
   declarative operation descriptors with sanitized fixtures; keep live pdfRest
   API checks separate because they consume API quota.
-- Validate with the project's build and lint scripts, then run the community
-  package scan before calling work ready for verification. Also exercise
-  binary upload and output download in a local n8n workflow before release.
+- Validate pull requests with the project's build, lint, and unit/API-contract
+  test scripts, plus applicable CI checks. Keep the published-package scan at
+  the post-publication stage described above. Also exercise binary upload and
+  output download in a local n8n workflow before release.
 
 ## UX and copy rules
 

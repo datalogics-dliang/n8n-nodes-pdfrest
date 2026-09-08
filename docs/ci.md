@@ -150,6 +150,14 @@ The live harness builds all n8n state from scratch on each run:
    and environment-managed owner.
 3. Authenticate the owner, create a short-lived n8n API key, and create the
    `pdfRestApi` credential through `@n8n/cli`.
+   Use the owner session to call n8n's `/rest/credentials/test` endpoint for
+   that credential. Require `data.status` to be `OK`, proving n8n discovers and
+   executes the credential-level `GET /up` test before endpoint workflows run.
+   This request has a 60-second timeout and no retries. A transport failure,
+   malformed response, or non-OK test result fails the harness immediately.
+   Credential-test payloads and raw responses stay in the secret-bearing
+   runtime directory and are deleted by the cleanup trap; only a fixed safe
+   pass/fail message reaches Actions output.
 4. Copy the committed fixtures and generate a one-day signing certificate,
    PFX file, and random password in the temporary copy.
 5. Render temporary workflows with the new credential ID, absolute fixture
@@ -232,11 +240,26 @@ to authenticate exclusively through OIDC trusted publishing. Do not configure
 an npm publishing token or OTP in GitHub. The n8n node CLI publishes with
 provenance and the public access configured in `package.json`.
 
-After the publish command succeeds, the job allows up to 20 minutes for npm's
-publish-time scan to make the version visible in the registry. The publish job
-has a 35-minute deadline so the pinned n8n community package scanner can then
-check that exact version. The job explicitly fails unless the scanner reports
-success.
+After publication succeeds, the separate `verify-published` job verifies the
+exact published version directly, without a registry visibility polling step.
+The job has a 35-minute deadline, read-only repository permission, and no
+publishing environment or OIDC permission. If the registry cannot yet serve
+the package or its attestations, verification fails; rerun the failed
+verification job once the registry is ready, without republishing.
+
+Verification checks the exact version's Sigstore provenance using the verifier
+bundled with pinned npm 11.19.0. It requires a valid signature with the GitHub
+Actions issuer and the release workflow identity, then matches the attested
+package name/version and SHA-512 digest to npm metadata and checks the source
+repository, release tag, workflow path, and checked-out commit. Missing,
+unsupported, invalid, or mismatched provenance fails the job. The pinned n8n
+community scanner then checks that exact version; both checks must pass.
+
+If verification fails after publication succeeds, rerun only the failed
+`verify-published` job (or use GitHub's re-run failed jobs option). Do not rerun
+all jobs: npm publication is already complete and the version cannot be
+republished. Investigate a provenance mismatch before declaring the release
+ready for n8n verification; do not bypass the check.
 
 Before creating a release tag, both parts of the release ownership gate must be
 confirmed:
@@ -258,12 +281,24 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Before the release candidate is declared ready for n8n verification, also run
-the required scan against the package available in npm:
+The community package scan is a post-publication release check. It scans the
+published npm package, not the local worktree or PR branch, so do not use it as
+a PR validation gate or evidence for unpublished changes. PR validation uses
+build, lint, unit/API-contract tests, and applicable CI checks.
+
+After GitHub Actions publishes the release, the scan must pass against that
+exact version before it is declared ready for n8n verification. The publish
+workflow performs this check automatically. To repeat it manually, use Node.js
+22.22.0 and the same pinned scanner version as the publish workflow:
 
 ```bash
-npx @n8n/scan-community-package @pdfrest/n8n-nodes-pdfrest
+PACKAGE_VERSION=0.2.0 # Replace with the exact published release version
+npx --yes @n8n/scan-community-package@0.32.0 "@pdfrest/n8n-nodes-pdfrest@$PACKAGE_VERSION"
 ```
+
+Omitting the package version scans npm's `latest` version, which may not be the
+intended release. A scanner installation failure is a tooling failure, not a
+completed package scan, and must not be reported as a passing scan.
 
 ## Versioning Policy
 
