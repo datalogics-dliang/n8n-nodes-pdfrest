@@ -158,11 +158,13 @@ Never publish from a developer machine. Stable releases are performed only by
 GitHub Actions with npm provenance after static and live gates pass. Do not add
 a personal-token fallback.
 
-Feature and fix pull requests do not change the package version. Prepare the
-SemVer change in a dedicated release pull request after selecting the release
-contents; update both `package.json` and `package-lock.json`. The current
-`0.1.1` version is the next patch release. See the
-[versioning policy](docs/ci.md#versioning-policy) for later releases.
+Feature and fix pull requests do not change the package version. After merging
+reviewed changes and passing CI, publish a stable GitHub Release tagged
+`vMAJOR.MINOR.PATCH` at the intended commit. The workflow derives the version
+from the tag and updates `package.json` and `package-lock.json` only in temporary
+release checkouts. A version-bump PR is not required; source manifests retain
+their development version. Pushing a tag alone does not publish to npm.
+See the [versioning policy](docs/ci.md#versioning-policy) for choosing versions.
 
 Release ownership, npm trusted publishing, environment setup, and tag
 conventions are documented in the [CI and release runbook](docs/ci.md).

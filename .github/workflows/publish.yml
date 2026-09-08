@@ -1,9 +1,8 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -30,21 +29,13 @@ jobs:
           node-version: 22.22.0
           package-manager-cache: false
 
-      - name: Match tag to package version
+      - name: Derive version from published release
         id: version
-        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Only stable vMAJOR.MINOR.PATCH tags can publish" >&2
-            exit 1
-          fi
-
-          package_version=$(node -p "require('./package.json').version")
-          if [[ "v$package_version" != "$GITHUB_REF_NAME" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match package version $package_version" >&2
-            exit 1
-          fi
-
+          package_version=$(node scripts/release/release-version.mjs "$RELEASE_TAG" "$RELEASE_PRERELEASE" "$GITHUB_REF")
           echo "version=$package_version" >> "$GITHUB_OUTPUT"
 
   static:
@@ -70,6 +61,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
+      - name: Apply release version to temporary checkout
+        env:
+          PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: npm version "$PACKAGE_VERSION" --no-git-tag-version --ignore-scripts --allow-same-version
+
       - name: Install dependencies
         run: npm ci
 
@@ -84,7 +80,9 @@ jobs:
 
   live:
     name: Release live pdfRest integration
-    needs: static
+    needs:
+      - validate-tag
+      - static
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: pdfrest-live
@@ -98,6 +96,11 @@ jobs:
         with:
           node-version: 22.22.0
           cache: npm
+
+      - name: Apply release version to temporary checkout
+        env:
+          PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: npm version "$PACKAGE_VERSION" --no-git-tag-version --ignore-scripts --allow-same-version
 
       - name: Install dependencies
         run: npm ci
@@ -174,6 +177,11 @@ jobs:
 
       - name: Install trusted-publishing npm CLI
         run: npm install --global npm@11.19.0
+
+      - name: Apply release version to temporary checkout
+        env:
+          PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: npm version "$PACKAGE_VERSION" --no-git-tag-version --ignore-scripts --allow-same-version
 
       - name: Install dependencies
         run: npm ci

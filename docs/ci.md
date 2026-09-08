@@ -219,10 +219,22 @@ Never commit a key, generated PFX file, or generated password.
 
 ## Stable Releases
 
-Publishing has one trigger: pushing a stable `vMAJOR.MINOR.PATCH` tag. The
-workflow rejects prerelease tags and rejects a tag whose version does not match
-`package.json` exactly. Release tags repeat the static and live gates before
-publishing.
+Publishing has one trigger: publishing a GitHub Release (`release: published`)
+with a stable `vMAJOR.MINOR.PATCH` tag. Drafts and tag pushes alone do not publish
+to npm. The workflow rejects releases marked as prereleases, tags with
+prerelease/build suffixes or leading zeros, and tags that differ from the
+workflow ref. Use the tag name, not the release title, to select the version.
+
+The tag is the release version source of truth. For example, `v1.1.2` produces
+npm version `1.1.2` regardless of the version committed in the source manifests.
+Each static, live, and publishing job runs
+`npm version "$PACKAGE_VERSION" --no-git-tag-version --ignore-scripts --allow-same-version`
+in its temporary checkout before installing dependencies. This updates
+`package.json`, `package-lock.json`, and the lockfile's root package version
+without running lifecycle scripts or creating commits or tags. Builds regenerate
+distribution metadata from that version. No version changes are pushed back.
+Static and live gates test the derived version before publishing; provenance
+still identifies the tagged source commit and release workflow.
 
 Create a GitHub environment named `npm-production`. A required reviewer is
 recommended.
@@ -273,13 +285,16 @@ Missing npm ownership, trusted-publisher configuration, GitHub environment
 permissions, or provenance is a release blocker. Do not add a token fallback or
 publish from a developer machine.
 
-Prepare a version change through the normal pull-request process. After it is
-merged and all CI checks pass, tag that exact commit and push the tag:
+Merge the reviewed changes and wait for CI to pass. In GitHub, create a release
+using a new, unused `vMAJOR.MINOR.PATCH` tag at that exact commit, leave the
+prerelease option unchecked, and publish the release. An existing tag at the
+intended commit may also be selected. Ensure that commit contains the updated
+release workflow; releases using older workflow revisions retain their old
+behavior. No dedicated version-bump PR is needed.
 
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-```
+Approve the protected live and npm environments when requested. Creating the
+GitHub Release starts verification and publishing; it does not mean npm
+publication has already succeeded. Check the Publish workflow result.
 
 The community package scan is a post-publication release check. It scans the
 published npm package, not the local worktree or PR branch, so do not use it as
@@ -303,11 +318,11 @@ completed package scan, and must not be reported as a passing scan.
 ## Versioning Policy
 
 Use semantic versions and keep feature or fix pull requests independent of the
-package version. Select the release contents first, then create a dedicated
-`release/<major>.<minor>.<patch>` branch and pull request that updates both
-`package.json` and `package-lock.json`.
+package version. Select the release contents first, then choose the next unused
+version in the GitHub Release tag. Committed manifest versions are development
+metadata and are not required to match the release tag.
 
-The intended first public release is `0.1.0`. Before `1.0.0`:
+Before `1.0.0`:
 
 - Increment the patch version for backward-compatible fixes and documentation
   corrections that affect the package.
@@ -318,7 +333,8 @@ The intended first public release is `0.1.0`. Before `1.0.0`:
 At and after `1.0.0`, increment patch for backward-compatible fixes, minor for
 backward-compatible functionality, and major for breaking changes. Published
 npm versions are immutable; never reuse a version. The stable release tag must
-be exactly `vMAJOR.MINOR.PATCH` and must match `package.json`.
+be exactly `vMAJOR.MINOR.PATCH`; the workflow applies its version to the
+temporary package manifests.
 
 The current publish workflow accepts stable tags only. Do not publish alpha,
 beta, or release-candidate versions unless a separately reviewed change adds a

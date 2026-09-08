@@ -87,9 +87,12 @@ not add a token fallback or publish locally.
 - Do not add blanket retries to quota-consuming pdfRest operations. The harness
   uses bounded local bootstrap timeouts and the workflow/job completion
   deadline documented in `docs/ci.md`.
-- Publish only from the stable `vMAJOR.MINOR.PATCH` tag workflow when the tag
-  matches `package.json`, static and live gates pass, and the protected npm
-  environment authorizes publishing with provenance. The initial `0.1.0`
+- Publish only when a stable GitHub Release is published with a
+  `vMAJOR.MINOR.PATCH` tag. Derive the package version from that tag and apply it
+  to `package.json` and `package-lock.json` in each temporary release checkout
+  before installing, building, or testing. Do not commit these version changes.
+  Static and live gates must pass, and the protected npm environment must
+  authorize publishing with provenance. The initial `0.1.0`
   release was the only permitted bootstrap-token exception; all later releases
   must use OIDC trusted publishing. Do not add another publish trigger or a
   token fallback.
