@@ -1,0 +1,599 @@
+{
+  "name": "Prepress preflight from a watched folder: convert to CMYK and PDF/X, verify, and write a report with pdfRest",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Prepress preflight from a watched folder: convert to CMYK and PDF/X, verify, and write a report with pdfRest\n\n**Community node.** This template uses the pdfRest API Toolkit community node (@pdfrest/n8n-nodes-pdfrest), so it runs on self-hosted n8n only. Install it under Settings > Community Nodes before importing.\n\nThis template also uses the Local File Trigger and Read/Write Files from Disk nodes, which need access to the server's file system. That is the point: files never leave your infrastructure. Pair it with a self-hosted pdfRest container for a fully on-premises print pipeline.\n\n### Who it's for\nPrint shops, prepress operators, and in-house design teams who receive PDFs from clients and need every file converted to CMYK, wrapped in a PDF/X profile, and checked before it goes to press.\n\n### How it works\n1. The Local File Trigger watches an inbox folder on the server for new PDFs.\n2. Read/Write Files from Disk loads the file into the workflow.\n3. pdfRest **Extract \u00b7 Query PDF Info** records the incoming state: PDF/X claim, page boxes, fonts, transparency, page count.\n4. pdfRest **Optimize \u00b7 Convert PDF Colors** converts to the CMYK profile set in Configuration, preserving black.\n5. pdfRest **Convert \u00b7 PDF to PDF/X** wraps the result in the PDF/X version set in Configuration.\n6. pdfRest **Extract \u00b7 Query PDF Info** runs again on the output to verify the PDF/X claim and font embedding.\n7. A Code node compares before and after and builds a preflight report: pass or fail, with reasons.\n8. The finished PDF is written to the outbox folder and the report is written beside it as JSON.\n9. Slack gets a pass/fail line per file. Failures include the reasons so an operator can act.\n\n### How to set up\n1. Install the pdfRest community node and add a pdfRest API credential (Cloud or your container's URL).\n2. Connect a Slack credential.\n3. In **Configuration**, set the outbox folder path, the CMYK profile, the PDF/X version, and the Slack channel ID.\n4. In **Watch Inbox Folder**, set the inbox folder path. Both folders must exist and be readable/writable by the n8n process (in Docker, mount them as volumes).\n5. Activate the workflow and drop a PDF in the inbox.\n\n### Requirements\nSelf-hosted n8n with file-system access, the pdfRest community node, a pdfRest API key or container URL, and a Slack credential.\n\n### How to customize\nAdd pdfRest **Create and modify \u00b7 Set Page Boxes** before the PDF/X step to enforce trim and bleed. Add **Optimize \u00b7 Flatten Transparencies** for PDF/X-1a targets that reject transparency. Route failures to a separate folder with an IF on `report.pass`. Replace Slack with email to the client. Change `colorProfile` to any preset the node offers (Acrobat 9 CMYK, Dot Gain, Lab, sRGB).",
+        "width": 560,
+        "height": 1240,
+        "color": 1
+      },
+      "id": "a5d67dbe-d87a-41eb-8678-6445c8644c96",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -720
+      ]
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "/data/prepress/inbox",
+        "events": [
+          "add"
+        ],
+        "options": {
+          "awaitWriteFinish": true,
+          "ignoreInitial": true
+        }
+      },
+      "id": "6a1e7d78-e9fa-4904-abdb-244360958723",
+      "name": "Watch Inbox Folder",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c648a663-6879-4d28-a876-f25625dc8753",
+              "name": "outboxPath",
+              "type": "string",
+              "value": "/data/prepress/outbox"
+            },
+            {
+              "id": "930f309f-34b2-4cf8-b4d4-8377c1437c18",
+              "name": "colorProfile",
+              "type": "string",
+              "value": "acrobat9-cmyk"
+            },
+            {
+              "id": "bd93b58e-27f9-4af3-9ce6-dc3f077c3ba6",
+              "name": "pdfXVersion",
+              "type": "string",
+              "value": "PDF/X-4"
+            },
+            {
+              "id": "58a50cd6-20c4-4b24-94c2-d166fd387236",
+              "name": "slackChannel",
+              "type": "string",
+              "value": "YOUR_SLACK_CHANNEL_ID"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "62b73fae-92d7-4fa5-b5fc-3c9590f3cbaf",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Watch Inbox Folder').item.json.path }}",
+        "options": {}
+      },
+      "id": "af716146-2984-4db6-958b-77fbec042953",
+      "name": "Read File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "78e52f6d-b1d5-41c0-9cf5-40ed6cc3281f",
+              "leftValue": "={{ $binary.data.mimeType ?? $binary.data.fileExtension }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "pdf"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bd899e56-4618-408d-bc84-6eb20d3edc29",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "queries": "selected",
+        "selectedQueries": [
+          "page_count",
+          "pdfx_claim",
+          "page_boxes",
+          "uses_nonembedded_fonts",
+          "uses_embedded_fonts",
+          "contains_transparency",
+          "pdf_version"
+        ]
+      },
+      "id": "61cf4c3e-82ed-48db-8699-b373d9b9dfd6",
+      "name": "Inspect Incoming",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "06473f90-dd05-4d9f-9521-951b5a693e72",
+      "name": "Reattach Original",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1b75429-8157-4d7e-bfbc-bd1aed6793e0",
+              "name": "incoming",
+              "type": "object",
+              "value": "={{ { pdfx_claim: $json.pdfx_claim, page_count: $json.page_count, uses_nonembedded_fonts: $json.uses_nonembedded_fonts, contains_transparency: $json.contains_transparency, pdf_version: $json.pdf_version, page_boxes: $json.page_boxes } }}"
+            },
+            {
+              "id": "2487d715-1a33-406e-a80d-cd10d5c08166",
+              "name": "fileName",
+              "type": "string",
+              "value": "={{ $binary.data.fileName }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "2c0ca29d-c1c5-4f67-a7c1-491748846779",
+      "name": "Record Incoming State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "convertColors",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "preserveBlack": "true"
+        },
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data",
+        "profileSource": "preset",
+        "colorProfile": "={{ $('Configuration').first().json.colorProfile }}"
+      },
+      "id": "85809e18-b334-4923-9c5f-580864fd7980",
+      "name": "Convert Colors to CMYK",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "convertPdfX",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data",
+        "pdfXVersion": "={{ $('Configuration').first().json.pdfXVersion }}"
+      },
+      "id": "7860714f-b382-470b-90c0-dfb14b84867a",
+      "name": "Convert to PDF/X",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "queries": "selected",
+        "selectedQueries": [
+          "pdfx_claim",
+          "uses_nonembedded_fonts",
+          "contains_transparency",
+          "page_count",
+          "pdf_version"
+        ]
+      },
+      "id": "7825b6e8-5425-40b3-a263-f9567a62e817",
+      "name": "Verify Output",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "3c7fe9b4-0d71-4d92-bac7-df11772eb2c0",
+      "name": "Reattach Output",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compares incoming and output state and decides pass/fail.\nconst cfg = $('Configuration').first().json;\nconst before = $('Record Incoming State').first().json;\nconst out = [];\nfor (const item of $input.all()) {\n  const after = item.json;\n  const reasons = [];\n  const claim = String(after.pdfx_claim ?? '');\n  if (!claim || /none|false/i.test(claim)) reasons.push('Output does not carry a PDF/X claim');\n  if (after.uses_nonembedded_fonts === true || String(after.uses_nonembedded_fonts) === 'true') reasons.push('Output still uses non-embedded fonts');\n  if (String(cfg.pdfXVersion) === 'PDF/X-1a' && (after.contains_transparency === true || String(after.contains_transparency) === 'true')) reasons.push('PDF/X-1a output still contains transparency');\n  if (Number(after.page_count) !== Number(before.incoming.page_count)) reasons.push(`Page count changed: ${before.incoming.page_count} -> ${after.page_count}`);\n  const report = {\n    file: before.fileName,\n    processedAt: new Date().toISOString(),\n    pass: reasons.length === 0,\n    reasons,\n    target: { colorProfile: cfg.colorProfile, pdfXVersion: cfg.pdfXVersion },\n    incoming: before.incoming,\n    output: { pdfx_claim: after.pdfx_claim, uses_nonembedded_fonts: after.uses_nonembedded_fonts, contains_transparency: after.contains_transparency, page_count: after.page_count, pdf_version: after.pdf_version },\n  };\n  const base = String(before.fileName ?? 'file.pdf').replace(/\\.pdf$/i, '');\n  out.push({ json: { report, outputFileName: `${base}_${String(cfg.pdfXVersion).replace('/', '')}.pdf`, reportFileName: `${base}_preflight.json`, reportText: JSON.stringify(report, null, 2) }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "abc2d8c6-0d9f-4774-8064-a972801374a9",
+      "name": "Build Preflight Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Configuration').first().json.outboxPath }}/{{ $json.outputFileName }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "fc6b009b-8e43-45ed-b225-688c46b0d4b5",
+      "name": "Write Prepress PDF",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "reportText",
+        "options": {
+          "fileName": "={{ $json.reportFileName }}"
+        }
+      },
+      "id": "7da6ba74-4ef7-4192-b84c-a0bd4d4d28b4",
+      "name": "Report to Binary",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Configuration').first().json.outboxPath }}/{{ $('Build Preflight Report').item.json.reportFileName }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "66df7d5a-cfba-4b63-bc8f-14f3e588f133",
+      "name": "Write Preflight Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Configuration').first().json.slackChannel }}"
+        },
+        "text": "={{ $('Build Preflight Report').item.json.report.pass ? ':white_check_mark: *PREFLIGHT PASS*' : ':x: *PREFLIGHT FAIL*' }} \u2014 {{ $('Build Preflight Report').item.json.report.file }}\n{{ $('Configuration').first().json.colorProfile }} \u00b7 {{ $('Configuration').first().json.pdfXVersion }} \u00b7 {{ $('Build Preflight Report').item.json.report.output.page_count }} pages\n{{ $('Build Preflight Report').item.json.report.reasons.length ? 'Issues: ' + $('Build Preflight Report').item.json.report.reasons.join('; ') : 'Written to ' + $('Configuration').first().json.outboxPath }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "dd31fd43-346f-404a-b03c-eb3059887bd4",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Watch a folder on the server\nLocal File Trigger fires when a file is added to the inbox path. Read/Write Files loads it onto `data`. Both nodes are self-hosted only; in Docker, mount the inbox and outbox folders as volumes.",
+        "width": 1000,
+        "height": 150,
+        "color": 7
+      },
+      "id": "762d125c-2471-41f2-a1ef-93f820f37b3b",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Inspect, convert, wrap\nQuery PDF Info records the incoming state (PDF/X claim, fonts, transparency, boxes). Convert Colors applies the CMYK preset with black preserved. Convert to PDF/X wraps the result.",
+        "width": 1000,
+        "height": 150,
+        "color": 7
+      },
+      "id": "a9dd9dc3-4dd9-4302-b4ff-f4405dfefce2",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Verify and report\nA second Query PDF Info checks the output. Build Preflight Report compares before/after and lists reasons for any failure. Both the PDF and a JSON report land in the outbox; Slack gets pass/fail.",
+        "width": 1200,
+        "height": 150,
+        "color": 7
+      },
+      "id": "8ed74b33-b0d2-47b5-b7aa-e75d27eaa24a",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2380,
+        -360
+      ]
+    }
+  ],
+  "connections": {
+    "Watch Inbox Folder": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Read File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read File": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Inspect Incoming",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach Original",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Inspect Incoming": {
+      "main": [
+        [
+          {
+            "node": "Reattach Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach Original": {
+      "main": [
+        [
+          {
+            "node": "Record Incoming State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Incoming State": {
+      "main": [
+        [
+          {
+            "node": "Convert Colors to CMYK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Colors to CMYK": {
+      "main": [
+        [
+          {
+            "node": "Convert to PDF/X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to PDF/X": {
+      "main": [
+        [
+          {
+            "node": "Verify Output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach Output",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Verify Output": {
+      "main": [
+        [
+          {
+            "node": "Reattach Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach Output": {
+      "main": [
+        [
+          {
+            "node": "Build Preflight Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Preflight Report": {
+      "main": [
+        [
+          {
+            "node": "Write Prepress PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Report to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report to Binary": {
+      "main": [
+        [
+          {
+            "node": "Write Preflight Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Prepress PDF": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
