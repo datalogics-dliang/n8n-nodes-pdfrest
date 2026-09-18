@@ -1,0 +1,1189 @@
+{
+  "name": "Email document intake: OCR, classify, file to Drive, and index every attachment",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Email document intake: OCR, classify, file to Drive, and index every attachment\n\n**Community node.** This template uses the pdfRest API Toolkit community node (@pdfrest/n8n-nodes-pdfrest), so it runs on self-hosted n8n only. Install it under Settings > Community Nodes before importing.\n\n### Who it's for\n\nTeams whose inbox is a document intake channel: accounts payable, legal ops, property management, anyone who receives invoices, contracts, and signed forms by email and files them by hand.\n\n### How it works\n\nThis workflow monitors Gmail for incoming messages, splits each attachment into its own item, and standardizes the binary data for processing. It checks PDF metadata, applies OCR when needed, converts the document to markdown, and uses an AI-powered Information Extractor (Anthropic Claude shown; any chat model works) to classify the document. Based on the classification, it files the attachment into the correct Google Drive folder, appends an index row in Google Sheets, and sends a Slack notification.\n\n### Setup steps\n\n- Connect and authorize the Gmail trigger for the mailbox or label that receives document intake emails.\n- Configure the folder IDs, index Sheet ID, Slack channel ID (right-click the channel in Slack > View channel details), and OCR languages in the Set Folder and Index IDs node.\n- Add a pdfRest API credential (API key from pdfrest.com) for the three pdfRest nodes and confirm the expected binary property is `data`.\n- Connect an Anthropic credential to the Anthropic Chat Model subnode (or swap in OpenAI, Gemini, or a local model) and verify the Document Type Classifier output matches the Route by Document Type switch rules.\n- Authorize Google Drive and Google Sheets credentials, then select the destination Drive folders and the spreadsheet used as the document index.\n- Authorize Slack credentials and configure the target channel or user for completion notifications.\n\n### Customization\n\nYou can adjust the document categories, folder mappings, classification prompt/schema, index columns, and Slack message content to match your filing taxonomy. To add a document type: add it to the attribute description in Document Type Classifier, add a rule in Route by Document Type, add a Prepare node for it, and a folder ID in Set Folder and Index IDs. For records retention, add pdfRest's Convert \u00b7 PDF to PDF/A (Archival) after Apply OCR to PDF. Swap Slack for Microsoft Teams or email, or narrow the Gmail filter to a label for a single-purpose inbox.",
+        "height": 1120,
+        "width": 480
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        224
+      ],
+      "id": "7c86c094-6fc8-4384-8ac3-394913de8f24",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Email intake setup\n\nStarts the workflow from Gmail and loads the Drive folder IDs, index Sheet ID, Slack channel, and OCR languages from Set Folder and Index IDs. This is the only node you edit.",
+        "height": 320,
+        "width": 416,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        688,
+        464
+      ],
+      "id": "dcbd107f-821c-4be5-8c82-e14bcd9859e9",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Attachment preparation\n\nSplits the email into one item per attachment, normalizes the binary field, and branches PDF attachments for additional inspection.",
+        "height": 320,
+        "width": 416,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        464
+      ],
+      "id": "4a4d68c9-6bd9-47ff-89cb-da5a5376f499",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## PDF metadata check\n\npdfRest Query PDF Info returns page count and whether the file is image-only (a scan with no text layer) as JSON. Merge PDF Data rejoins that JSON with the item that still carries the PDF binary.",
+        "height": 432,
+        "width": 432,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        352
+      ],
+      "id": "ef019ee0-f19a-4135-8439-48443cd1bce2",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## OCR decision path\n\nImage-only scans go through pdfRest OCR and get a searchable text layer. Born-digital PDFs skip it. Each item is marked with whether OCR was applied.",
+        "height": 576,
+        "width": 672,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        352
+      ],
+      "id": "d756a8c8-9273-4880-b23d-45d4d151caf1",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Extract and classify\n\npdfRest converts the PDF to Markdown (JSON output). The Information Extractor reads the first 12,000 characters and returns documentType, counterparty, and documentDate. Merge for Filing reattaches the PDF binary for upload.",
+        "height": 528,
+        "width": 688,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        368
+      ],
+      "id": "07dbbcdc-8dd6-4060-9d30-80b7d1d9d781",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Choose filing destination\n\nRoutes the classified document type and sets the target folder ID plus normalized document type for each filing category.",
+        "height": 800,
+        "width": 432,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3552,
+        224
+      ],
+      "id": "b19cf76b-5d19-44be-b564-3291ff8b892e",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Upload filed document\n\nUploads the processed attachment to the selected Google Drive folder.",
+        "height": 320,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4048,
+        464
+      ],
+      "id": "dd1f0291-c80c-47a8-bc43-6f19215a3179",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Index and notify\n\nRecords the uploaded document in Google Sheets and sends a Slack notification when indexing is complete.",
+        "height": 320,
+        "width": 432,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4304,
+        464
+      ],
+      "id": "25272f7f-4cf1-4e30-a91b-4f8116940d91",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cc7ee596-5a0d-411d-b490-ce687a02a081",
+              "name": "invoiceFolderId",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "f3e1842e-cfb5-43ea-b10c-3bdeb893b3e8",
+              "name": "contractFolderId",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "c90751a8-fc18-42f3-8dac-0794d62067c2",
+              "name": "correspondenceFolderId",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "b75f810b-dccc-4f51-bece-c259ab4f6008",
+              "name": "otherFolderId",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "8be4a603-40d1-4988-9f51-b0cfba0b1de2",
+              "name": "indexSheetId",
+              "value": "YOUR_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "63372423-dfaf-4c94-a491-c348c4ecfcc4",
+              "name": "slackChannel",
+              "type": "string",
+              "value": "YOUR_SLACK_CHANNEL_ID"
+            },
+            {
+              "id": "17831787-5bb6-4a9b-be4b-551e1cdd56ef",
+              "name": "ocrLanguages",
+              "type": "string",
+              "value": "English"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "e579c83f-44a5-4d6c-aa09-40d960542612",
+      "name": "Set Folder and Index IDs",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        960,
+        624
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "7f67c4bf-a4d8-4037-bfa3-6f0b2e7f2494",
+      "name": "When Email Received",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        736,
+        624
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per attachment. Reads binary from the Gmail trigger and copies it\n// to a plain object so the Code sandbox accepts it. Binary lands on `data`\n// so every downstream node reads the same property.\nconst cfg = $('Set Folder and Index IDs').first().json;\nconst out = [];\n\nfor (const item of $('When Email Received').all()) {\n  const email = item.json;\n  const keys = Object.keys(item.binary || {}).filter(k => k.startsWith('attachment_'));\n\n  for (const key of keys) {\n    const bin = JSON.parse(JSON.stringify(item.binary[key]));\n    out.push({\n      json: {\n        messageId: email.id,\n        subject: email.Subject ?? email.subject ?? '(no subject)',\n        from: email.From ?? email.from ?? '',\n        receivedAt: email.date ?? new Date().toISOString(),\n        fileName: bin.fileName ?? `${key}.pdf`,\n        mimeType: bin.mimeType ?? '',\n        config: cfg,\n      },\n      binary: { data: bin },\n    });\n  }\n}\n\nreturn out;"
+      },
+      "id": "d6a49c34-73b2-42ce-9720-c6ed36262ace",
+      "name": "Extract Each Attachment",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1184,
+        624
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "5e0f618b-9dbd-497e-8ad7-ee340e31178a",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3961ea38-541c-4365-bfe6-0c1de2c223b4",
+      "name": "Check PDF Format",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1408,
+        624
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "queries": "selected",
+        "selectedQueries": [
+          "image_only",
+          "page_count"
+        ],
+        "options": {},
+        "requestOptions": {}
+      },
+      "id": "8a35773b-3b51-45a8-a0e0-5395a2e7acd1",
+      "name": "Fetch PDF Metadata",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "position": [
+        1648,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "96eec3f2-ac78-4151-9869-7b9efde385a4",
+      "name": "Merge PDF Data",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        1888,
+        624
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "25040251-c3d6-47ef-b91a-6c8842a1b7f8",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.image_only }}",
+              "rightValue": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e94fa30d-8e4f-44a2-85cd-1b43a36abce1",
+      "name": "Check OCR Requirement",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        2128,
+        624
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "ocr",
+        "downloadOutputFiles": true,
+        "options": {
+          "languages": "={{ ($json.config.ocrLanguages ?? 'English').split(',').map(s => s.trim()) }}"
+        },
+        "requestOptions": {}
+      },
+      "id": "24445e41-0fe3-4a21-898a-2866badb70e2",
+      "name": "Apply OCR to PDF",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "position": [
+        2368,
+        496
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7219889-ecfc-40f0-98a8-802d0aa123bb",
+              "name": "ocrApplied",
+              "type": "boolean",
+              "value": true
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5e737144-356b-4e55-b4c3-5d237530abd6",
+      "name": "Set OCR Status Applied",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        2608,
+        496
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0a30d0ca-4e6a-4806-842f-8fa001d454da",
+              "name": "ocrApplied",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "61d0dae8-ea9c-4d67-89aa-922dac18b76e",
+      "name": "Set OCR Status Skipped",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        2608,
+        768
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "operation": "convertMarkdown",
+        "options": {
+          "outputType": "json",
+          "pageBreakComments": "on"
+        },
+        "requestOptions": {}
+      },
+      "id": "017f593b-f841-4145-8eba-fb6b1a14c310",
+      "name": "Convert PDF to Markdown",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "position": [
+        2864,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "text": "={{ ($json.markdown ?? JSON.stringify($json)).slice(0, 12000) }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "documentType",
+              "description": "One of: invoice, contract, correspondence, other. Choose the single best fit.",
+              "required": true
+            },
+            {
+              "name": "counterparty",
+              "description": "The other organization or person the document is from or with. Empty string if unknown."
+            },
+            {
+              "name": "documentDate",
+              "description": "The primary date on the document in YYYY-MM-DD, or empty string if none."
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "You classify business documents from their text. Use only the text provided. documentType must be exactly one of invoice, contract, correspondence, other."
+        }
+      },
+      "id": "c1863861-46de-4534-87aa-bccdb584721b",
+      "name": "Document Type Classifier",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "position": [
+        3104,
+        512
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "ad242047-95ac-46d0-b317-60ed5954a81b",
+      "name": "Merge for Filing",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        3360,
+        624
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "8872ba0c-4e26-48e6-a78d-53a68dc0e758",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.documentType }}",
+                    "rightValue": "invoice"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "invoice"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "a91a8e50-3225-4c27-ae26-a918ffcae507",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.documentType }}",
+                    "rightValue": "contract"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "contract"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "83d053b2-986d-4fac-aad8-f2b0c4c9cc1a",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.output.documentType }}",
+                    "rightValue": "correspondence"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "correspondence"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "other"
+        }
+      },
+      "id": "e38acee9-89c9-4e64-9ca0-00d62dae707e",
+      "name": "Route by Document Type",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        3600,
+        624
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c7419332-b342-4b38-846e-c0803e08645a",
+              "name": "targetFolderId",
+              "type": "string",
+              "value": "={{ $json.config.invoiceFolderId }}"
+            },
+            {
+              "id": "55bfc12d-85ff-4910-b46c-551e3d4d309a",
+              "name": "documentType",
+              "type": "string",
+              "value": "invoice"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ec1f4574-34d5-49f0-855c-ec376d55029f",
+      "name": "Prepare Invoice for Filing",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3840,
+        384
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0eafde55-8322-4162-8d48-ec81af49131f",
+              "name": "targetFolderId",
+              "type": "string",
+              "value": "={{ $json.config.contractFolderId }}"
+            },
+            {
+              "id": "8f268d94-a4f9-4c64-b63b-1b1760fdecf1",
+              "name": "documentType",
+              "type": "string",
+              "value": "contract"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "db011494-8ab4-4816-a177-7363da065cc9",
+      "name": "Prepare Contract for Filing",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3840,
+        544
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84bec2d2-3409-4ced-8f74-10de60c4ea3c",
+              "name": "targetFolderId",
+              "type": "string",
+              "value": "={{ $json.config.correspondenceFolderId }}"
+            },
+            {
+              "id": "4be120ed-f2de-4a53-bf7f-94d8e416f2d1",
+              "name": "documentType",
+              "type": "string",
+              "value": "correspondence"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "df69edfb-d0e2-4084-af88-7527da0c9baa",
+      "name": "Prepare Correspondence for Filing",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3840,
+        704
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1792c2e5-4e50-48a4-9f8b-4041339072df",
+              "name": "targetFolderId",
+              "type": "string",
+              "value": "={{ $json.config.otherFolderId }}"
+            },
+            {
+              "id": "c09138e5-2a3c-4348-a6bc-710c764d7e12",
+              "name": "documentType",
+              "type": "string",
+              "value": "other"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "053c97d7-6527-4f23-8581-6d37de54bc50",
+      "name": "Prepare Other Documents for Filing",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        3840,
+        864
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "name": "={{ ($json.output.documentDate || $json.receivedAt.slice(0,10)) }}_{{ $json.documentType }}_{{ ($json.output.counterparty || 'unknown').replace(/[^A-Za-z0-9-]+/g,'-') }}_{{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.targetFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "bc7ca415-ad75-437a-bad5-72d8d889d721",
+      "name": "Upload Document to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        4096,
+        624
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Set Folder and Index IDs').first().json.indexSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Drive Link": "={{ $json.webViewLink }}",
+            "Received": "=\t{{ $('Merge for Filing').item.json.receivedAt }}",
+            "From": "={{ $('Merge for Filing').item.json.from }}",
+            "Subject": "={{ $('Merge for Filing').item.json.subject }}",
+            "File": "={{ $json.name }}",
+            "Type": "={{ $('Merge for Filing').item.json.output.documentType }}",
+            "Counterparty": "={{ $('Merge for Filing').item.json.output.counterparty }}",
+            "Document Date": "={{ $('Merge for Filing').item.json.output.documentDate }}",
+            "Pages": "={{ $('Merge for Filing').item.json.page_count }}",
+            "OCR Applied": "={{ $('Merge for Filing').item.json.ocrApplied }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Received",
+              "displayName": "Received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "From",
+              "displayName": "From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "File",
+              "displayName": "File",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Counterparty",
+              "displayName": "Counterparty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Document Date",
+              "displayName": "Document Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pages",
+              "displayName": "Pages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "OCR Applied",
+              "displayName": "OCR Applied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Drive Link",
+              "displayName": "Drive Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "dc88b3ce-d045-41cc-8242-4de532c26b44",
+      "name": "Log to Index Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        4368,
+        624
+      ],
+      "typeVersion": 4.5
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Set Folder and Index IDs').first().json.slackChannel }}"
+        },
+        "text": "=:page_facing_up: *{{ $('Merge for Filing').item.json.output.documentType }}* from {{ $('Merge for Filing').item.json.from }}\n{{ $('Merge for Filing').item.json.subject }} \u00b7 {{ $('Merge for Filing').item.json.page_count }} pages{{ $('Merge for Filing').item.json.ocrApplied ? ' \u00b7 OCR applied' : '' }}\n<{{ $('Upload Document to Drive').item.json.webViewLink }}|Open in Drive>",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "1a8f0342-5565-4f10-bf18-66def5a7bcdf",
+      "name": "Post Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "position": [
+        4608,
+        624
+      ],
+      "typeVersion": 2.3,
+      "webhookId": "e72c6169-c586-4cc7-af83-606728c0bbc2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        3104,
+        752
+      ],
+      "id": "69d1c76e-37d9-430e-b4e7-2f36e4069de6",
+      "name": "Anthropic Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Check PDF Format": {
+      "main": [
+        [
+          {
+            "node": "Fetch PDF Metadata",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge PDF Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Apply OCR to PDF": {
+      "main": [
+        [
+          {
+            "node": "Set OCR Status Applied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check OCR Requirement": {
+      "main": [
+        [
+          {
+            "node": "Apply OCR to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set OCR Status Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge PDF Data": {
+      "main": [
+        [
+          {
+            "node": "Check OCR Requirement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Folder and Index IDs": {
+      "main": [
+        [
+          {
+            "node": "Extract Each Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Other Documents for Filing": {
+      "main": [
+        [
+          {
+            "node": "Upload Document to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Email Received": {
+      "main": [
+        [
+          {
+            "node": "Set Folder and Index IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Document Type": {
+      "main": [
+        [
+          {
+            "node": "Prepare Invoice for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Contract for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Correspondence for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Other Documents for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PDF Metadata": {
+      "main": [
+        [
+          {
+            "node": "Merge PDF Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Index Sheet": {
+      "main": [
+        [
+          {
+            "node": "Post Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Invoice for Filing": {
+      "main": [
+        [
+          {
+            "node": "Upload Document to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PDF to Markdown": {
+      "main": [
+        [
+          {
+            "node": "Document Type Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Document to Drive": {
+      "main": [
+        [
+          {
+            "node": "Log to Index Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Contract for Filing": {
+      "main": [
+        [
+          {
+            "node": "Upload Document to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set OCR Status Applied": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to Markdown",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge for Filing",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Set OCR Status Skipped": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to Markdown",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge for Filing",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Document Type Classifier": {
+      "main": [
+        [
+          {
+            "node": "Merge for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Each Attachment": {
+      "main": [
+        [
+          {
+            "node": "Check PDF Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge for Filing": {
+      "main": [
+        [
+          {
+            "node": "Route by Document Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Correspondence for Filing": {
+      "main": [
+        [
+          {
+            "node": "Upload Document to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Document Type Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": []
+}

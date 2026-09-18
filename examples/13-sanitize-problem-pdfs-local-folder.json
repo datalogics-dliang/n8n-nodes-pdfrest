@@ -1,0 +1,639 @@
+{
+  "name": "Sanitize problem PDFs from a watched folder: rasterize, OCR, convert to PDF/A, verify, and archive with pdfRest",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Sanitize problem PDFs from a watched folder: rasterize, OCR, convert to PDF/A, verify, and archive with pdfRest\n\n**Community node.** This template uses the pdfRest API Toolkit community node (@pdfrest/n8n-nodes-pdfrest), so it runs on self-hosted n8n only. Install it under Settings > Community Nodes before importing.\n\nThis template also uses the Local File Trigger and Read/Write Files from Disk nodes, which need access to the server's file system. Files never leave your infrastructure. Pair it with a self-hosted pdfRest container for a fully on-premises pipeline.\n\n### Who it's for\nRecords, legal, and compliance teams who receive PDFs that break downstream tools \u2014 corrupted structure, embedded JavaScript, odd fonts, broken text layers \u2014 and need a clean, searchable, archival copy that is guaranteed to open everywhere.\n\n### How it works\n1. The Local File Trigger watches an inbox folder for new PDFs and Read/Write Files loads each one.\n2. pdfRest **Extract \u00b7 Query PDF Info** records the incoming state: JavaScript, embedded files, XFA, fonts, PDF/A claim, page count, file size.\n3. pdfRest **Optimize \u00b7 Rasterize PDF** flattens every page to an image. Anything that was wrong with the file's structure is gone; so is its text layer.\n4. pdfRest **Extract \u00b7 OCR PDF** rebuilds the text layer so the result is searchable.\n5. pdfRest **Convert \u00b7 PDF to PDF/A** wraps the result in the archival profile set in Configuration.\n6. pdfRest **Extract \u00b7 Query PDF Info** runs again to verify the PDF/A claim and confirm JavaScript and embedded files are gone.\n7. A Code node builds a sanitization report: pass or fail, with reasons, and before/after size.\n8. The clean PDF and the JSON report are written to the archive folder. Slack gets a pass/fail line.\n\n### How to set up\n1. Install the pdfRest community node and add a pdfRest API credential (Cloud or your container's URL).\n2. Connect a Slack credential.\n3. In **Configuration**, set the archive folder path, the PDF/A version, the OCR language, and the Slack channel ID.\n4. In **Watch Inbox Folder**, set the inbox folder path. Both folders must exist and be readable/writable by the n8n process (in Docker, mount them as volumes).\n5. Activate the workflow and drop a PDF in the inbox.\n\n### Requirements\nSelf-hosted n8n with file-system access, the pdfRest community node, a pdfRest API key or container URL, and a Slack credential.\n\n### How to customize\nThis is a heavy-handed pipeline by design: rasterizing discards vector text and form fields. If your inputs are merely untidy rather than broken, replace Rasterize with **Optimize \u00b7 Flatten Annotations** and **Forms \u00b7 Flatten Forms** and keep the rest. Add **Secure \u00b7 Apply Text Redactions** before PDF/A for documents that need redaction on the way in. Route failures to a quarantine folder with an IF on `report.pass`.",
+        "width": 560,
+        "height": 1240,
+        "color": 1
+      },
+      "id": "baa20864-2615-4d04-8c25-9ae14e931a04",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -720
+      ]
+    },
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "/data/sanitize/inbox",
+        "events": [
+          "add"
+        ],
+        "options": {
+          "awaitWriteFinish": true,
+          "ignoreInitial": true
+        }
+      },
+      "id": "f915cb77-feef-4c6c-ba32-a28bbc9025ed",
+      "name": "Watch Inbox Folder",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e499eab-ad65-43a3-baf1-38b165c8dd6d",
+              "name": "archivePath",
+              "type": "string",
+              "value": "/data/sanitize/archive"
+            },
+            {
+              "id": "affe5336-1662-42ff-9178-7e1d94aa14a7",
+              "name": "pdfAVersion",
+              "type": "string",
+              "value": "PDF/A-2b"
+            },
+            {
+              "id": "aac924d0-3e96-4b82-b974-cc59b9fa0261",
+              "name": "ocrLanguages",
+              "type": "string",
+              "value": "English"
+            },
+            {
+              "id": "5a6e5c24-239b-4d30-952a-38e6ebae3cfd",
+              "name": "slackChannel",
+              "type": "string",
+              "value": "YOUR_SLACK_CHANNEL_ID"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "cb022fa0-0690-4e3d-a24c-5c907dd910a4",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Watch Inbox Folder').item.json.path }}",
+        "options": {}
+      },
+      "id": "f6a9636a-d988-443e-9b6c-bc9d9c0a378a",
+      "name": "Read File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9cd61abf-54c3-46d4-a2ec-a7d4e1d12d89",
+              "leftValue": "={{ $binary.data.mimeType ?? $binary.data.fileExtension }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "pdf"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9e955fa6-aed8-4036-bb12-871891bc830e",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "queries": "selected",
+        "selectedQueries": [
+          "page_count",
+          "file_size",
+          "pdfa",
+          "contains_javascript",
+          "contains_embedded_file",
+          "contains_xfa",
+          "uses_nonembedded_fonts",
+          "image_only",
+          "pdf_version"
+        ]
+      },
+      "id": "e6c1b0e3-a401-4459-94e6-c380c93349ee",
+      "name": "Inspect Incoming",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "2e347e9a-fb2d-47e2-9ee0-ba5285a6a1fc",
+      "name": "Reattach Original",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9300f994-1ada-459f-9e73-b59e357dc6e6",
+              "name": "incoming",
+              "type": "object",
+              "value": "={{ { page_count: $json.page_count, file_size: $json.file_size, pdfa: $json.pdfa, contains_javascript: $json.contains_javascript, contains_embedded_file: $json.contains_embedded_file, contains_xfa: $json.contains_xfa, uses_nonembedded_fonts: $json.uses_nonembedded_fonts, image_only: $json.image_only, pdf_version: $json.pdf_version } }}"
+            },
+            {
+              "id": "9e1b2afb-f9bb-4d44-b0fe-1b491257064c",
+              "name": "fileName",
+              "type": "string",
+              "value": "={{ $binary.data.fileName }}"
+            },
+            {
+              "id": "e5633212-1d9c-454e-9e8d-592347d93467",
+              "name": "originalSize",
+              "type": "string",
+              "value": "={{ $binary.data.fileSize }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "96a8682f-b399-4f5b-9b66-26e01ce119ef",
+      "name": "Record Incoming State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "rasterize",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data"
+      },
+      "id": "42bae5b3-d295-400a-85e6-6d0a9407a628",
+      "name": "Rasterize PDF",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "ocr",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "languages": "={{ ($('Configuration').first().json.ocrLanguages ?? 'English').split(',').map(s => s.trim()) }}"
+        },
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data"
+      },
+      "id": "1073cf70-4899-4057-a47e-5fc6ca1052fc",
+      "name": "OCR PDF",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "convertPdfA",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "rasterizeIfErrorsEncountered": "off"
+        },
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data",
+        "pdfAVersion": "={{ $('Configuration').first().json.pdfAVersion }}"
+      },
+      "id": "5d38cf8c-c479-4edc-b292-c020ec933a3d",
+      "name": "Convert to PDF/A",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "queries": "selected",
+        "selectedQueries": [
+          "page_count",
+          "pdfa",
+          "contains_javascript",
+          "contains_embedded_file",
+          "contains_xfa",
+          "image_only",
+          "pdf_version"
+        ]
+      },
+      "id": "6dd7e4e8-04ec-4f59-b3a2-399cf22dcf5e",
+      "name": "Verify Output",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "0614f511-8a84-4cd7-957a-51a9d697a1a2",
+      "name": "Reattach Output",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compares incoming and output state and decides pass/fail.\nfunction toBytes(sizeText) {\n  if (typeof sizeText === 'number') return sizeText;\n  const m = String(sizeText ?? '').match(/([\\d.]+)\\s*(B|kB|KB|MB|GB)/i);\n  if (!m) return 0;\n  const n = parseFloat(m[1]); const u = m[2].toLowerCase();\n  return u === 'gb' ? n * 1e9 : u === 'mb' ? n * 1e6 : u === 'kb' ? n * 1e3 : n;\n}\nconst cfg = $('Configuration').first().json;\nconst before = $('Record Incoming State').first().json;\nconst truthy = v => v === true || String(v) === 'true';\nconst out = [];\nfor (const item of $input.all()) {\n  const after = item.json;\n  const reasons = [];\n  const claim = String(after.pdfa ?? '');\n  if (!claim || /none|false/i.test(claim)) reasons.push('Output does not carry a PDF/A claim');\n  if (truthy(after.contains_javascript)) reasons.push('Output still contains JavaScript');\n  if (truthy(after.contains_embedded_file)) reasons.push('Output still contains embedded files');\n  if (truthy(after.contains_xfa)) reasons.push('Output still contains XFA');\n  if (truthy(after.image_only)) reasons.push('Output has no text layer (OCR did not apply)');\n  if (Number(after.page_count) !== Number(before.incoming.page_count)) reasons.push(`Page count changed: ${before.incoming.page_count} -> ${after.page_count}`);\n  const outBytes = toBytes(item.binary?.data?.fileSize);\n  const inBytes = toBytes(before.originalSize);\n  const report = {\n    file: before.fileName,\n    processedAt: new Date().toISOString(),\n    pass: reasons.length === 0,\n    reasons,\n    target: { pdfAVersion: cfg.pdfAVersion, ocrLanguages: cfg.ocrLanguages },\n    sizeBefore: before.originalSize, sizeAfter: item.binary?.data?.fileSize ?? '',\n    sizeChangePct: inBytes ? Math.round((outBytes / inBytes - 1) * 1000) / 10 : null,\n    incoming: before.incoming,\n    output: { pdfa: after.pdfa, contains_javascript: after.contains_javascript, contains_embedded_file: after.contains_embedded_file, contains_xfa: after.contains_xfa, image_only: after.image_only, page_count: after.page_count, pdf_version: after.pdf_version },\n  };\n  const base = String(before.fileName ?? 'file.pdf').replace(/\\.pdf$/i, '');\n  out.push({ json: { report, outputFileName: `${base}_${String(cfg.pdfAVersion).replace('/', '')}.pdf`, reportFileName: `${base}_sanitize.json`, reportText: JSON.stringify(report, null, 2) }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "b7ec53b6-885b-4b25-935a-2066e1478378",
+      "name": "Build Sanitization Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Configuration').first().json.archivePath }}/{{ $json.outputFileName }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "82e5b416-d341-46fe-babd-a18460c0b99d",
+      "name": "Write Clean PDF",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "reportText",
+        "options": {
+          "fileName": "={{ $json.reportFileName }}"
+        }
+      },
+      "id": "28a81ddd-fbd8-4d50-bd36-9e1477d87a70",
+      "name": "Report to Binary",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Configuration').first().json.archivePath }}/{{ $('Build Sanitization Report').item.json.reportFileName }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "c1fb229b-7620-4cd0-9046-c565e91219b2",
+      "name": "Write Sanitization Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Configuration').first().json.slackChannel }}"
+        },
+        "text": "={{ $('Build Sanitization Report').item.json.report.pass ? ':white_check_mark: *SANITIZED*' : ':x: *SANITIZE FAIL*' }} \u2014 {{ $('Build Sanitization Report').item.json.report.file }}\n{{ $('Configuration').first().json.pdfAVersion }} \u00b7 {{ $('Build Sanitization Report').item.json.report.output.page_count }} pages \u00b7 {{ $('Build Sanitization Report').item.json.report.sizeBefore }} \u2192 {{ $('Build Sanitization Report').item.json.report.sizeAfter }}\n{{ $('Build Sanitization Report').item.json.report.reasons.length ? 'Issues: ' + $('Build Sanitization Report').item.json.report.reasons.join('; ') : 'Archived to ' + $('Configuration').first().json.archivePath }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "8fe3ba6f-6fdf-4b06-86a1-ad4f04547dbe",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Watch a folder on the server\nLocal File Trigger fires when a file is added to the inbox path. Read/Write Files loads it onto `data`. Self-hosted only; in Docker, mount inbox and archive as volumes.",
+        "width": 1000,
+        "height": 150,
+        "color": 7
+      },
+      "id": "bedd0281-63b7-44f9-96c7-127110d332e8",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Burn it down and rebuild\nQuery PDF Info records what was wrong (JavaScript, embedded files, XFA, fonts). Rasterize flattens every page to an image \u2014 structure problems cannot survive that. OCR rebuilds the text layer. PDF/A wraps it for archive.",
+        "width": 1200,
+        "height": 170,
+        "color": 7
+      },
+      "id": "c6426fdd-cd62-4b62-81bc-7a14e894b572",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Verify and report\nA second Query PDF Info confirms the PDF/A claim and that JavaScript, embedded files, and XFA are gone. The report includes before/after size. PDF and report land in the archive; Slack gets pass/fail.",
+        "width": 1200,
+        "height": 150,
+        "color": 7
+      },
+      "id": "4075b0b5-a9a2-47c3-9df7-07426f282a13",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2620,
+        -360
+      ]
+    }
+  ],
+  "connections": {
+    "Watch Inbox Folder": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Read File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read File": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Inspect Incoming",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach Original",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Inspect Incoming": {
+      "main": [
+        [
+          {
+            "node": "Reattach Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach Original": {
+      "main": [
+        [
+          {
+            "node": "Record Incoming State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Incoming State": {
+      "main": [
+        [
+          {
+            "node": "Rasterize PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rasterize PDF": {
+      "main": [
+        [
+          {
+            "node": "OCR PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR PDF": {
+      "main": [
+        [
+          {
+            "node": "Convert to PDF/A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to PDF/A": {
+      "main": [
+        [
+          {
+            "node": "Verify Output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach Output",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Verify Output": {
+      "main": [
+        [
+          {
+            "node": "Reattach Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach Output": {
+      "main": [
+        [
+          {
+            "node": "Build Sanitization Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sanitization Report": {
+      "main": [
+        [
+          {
+            "node": "Write Clean PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Report to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report to Binary": {
+      "main": [
+        [
+          {
+            "node": "Write Sanitization Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Clean PDF": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

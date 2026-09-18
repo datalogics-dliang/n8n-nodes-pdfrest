@@ -1,0 +1,824 @@
+{
+  "name": "Build a searchable PDF knowledge base from Google Drive: OCR, Markdown, embed, and chat with citations",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Build a searchable PDF knowledge base from Google Drive: OCR, Markdown, embed, and chat with citations\n\n**Community node.** This template uses the pdfRest API Toolkit community node (@pdfrest/n8n-nodes-pdfrest), so it runs on self-hosted n8n only. Install it under Settings > Community Nodes before importing.\n\n### Who it's for\nTeams with a Drive folder of PDFs \u2014 policies, manuals, contracts, research \u2014 who want to ask questions across all of them and get answers that cite the source document and page.\n\n### How it works\n**Ingest (top row)**\n1. The Google Drive Trigger watches a Knowledge folder for new PDFs and downloads each one.\n2. pdfRest **Extract \u00b7 Query PDF Info** reads page count and whether the file is image-only.\n3. Image-only scans go through pdfRest **Extract \u00b7 OCR PDF**; born-digital PDFs skip it.\n4. pdfRest **Convert \u00b7 PDF to Markdown** returns clean text with page-break comments.\n5. A Code node splits the Markdown on page breaks so every chunk carries its page number and file name as metadata.\n6. A Recursive Character Text Splitter and an embeddings model load the chunks into a vector store.\n7. Google Sheets records the file, page count, chunk count, and ingest time.\n\n**Chat (bottom row)**\n8. The Chat Trigger accepts a question. An AI Agent uses the vector store as a tool, retrieves the most relevant chunks, and answers with the file name and page for each fact it uses.\n\n### How to set up\n1. Install the pdfRest community node and add a pdfRest API credential.\n2. Connect Google Drive, Google Sheets, an embeddings credential (Google Gemini shown), and a chat model credential (Anthropic shown).\n3. In **Configuration**, paste the manifest Sheet ID and set the OCR language.\n4. In **Watch Knowledge Folder**, pick the Drive folder to index.\n5. Create the manifest Sheet with headers: Ingested, File, Pages, Chunks, OCR Applied, Drive Link.\n6. Drop a few PDFs in the folder, wait for ingest, then open the chat and ask a question.\n\n### Requirements\nSelf-hosted n8n, the pdfRest community node, a pdfRest API key, Google Drive, Google Sheets, an embeddings provider key, and a chat model key.\n\n### How to customize\nReplace the Simple Vector Store with Pinecone, Qdrant, Supabase, or PGVector for a persistent index \u2014 the Simple Vector Store resets when n8n restarts. Swap Gemini embeddings for OpenAI, Cohere, Mistral, or Ollama. Change the agent's system message to enforce your citation format or restrict it to the knowledge base only. Add pdfRest **Convert \u00b7 PDF to PDF/A** before upload to keep an archival copy alongside the index.",
+        "width": 560,
+        "height": 1180,
+        "color": 1
+      },
+      "id": "b0ede511-bf25-4b12-8bb4-ec7fc38fabbb",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -700
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_KNOWLEDGE_FOLDER_ID"
+        },
+        "event": "fileCreated",
+        "options": {
+          "fileType": "all"
+        }
+      },
+      "id": "aa51233b-774e-49a9-96af-b03acba0b430",
+      "name": "Watch Knowledge Folder",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "191780f7-5620-49f7-9c85-362750589c4e",
+              "name": "manifestSheetId",
+              "type": "string",
+              "value": "YOUR_SPREADSHEET_ID"
+            },
+            {
+              "id": "55e81522-77ce-460c-9f12-1382bb563031",
+              "name": "ocrLanguages",
+              "type": "string",
+              "value": "English"
+            },
+            {
+              "id": "aa449f89-9d42-4104-ae15-47d63f61f369",
+              "name": "collectionName",
+              "type": "string",
+              "value": "pdf-knowledge-base"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "153d5f94-1c07-479f-9da7-4328c93b1451",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Watch Knowledge Folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "577efc98-42e2-435d-870d-8f3e4826ca51",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "56ea5e3f-84d9-4488-81da-f888e8389501",
+              "leftValue": "={{ $binary.data.mimeType }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "application/pdf"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "16767eaa-2d9c-4c23-bc0f-e43890d1d9d1",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {},
+        "requestOptions": {},
+        "queries": "selected",
+        "selectedQueries": [
+          "page_count",
+          "image_only",
+          "title"
+        ]
+      },
+      "id": "fc9d5e1e-d031-4503-897d-1e5530c72a4b",
+      "name": "Query PDF Info",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "7a5b53ac-81f2-4dab-a5ef-d655d194ba0f",
+      "name": "Reattach PDF",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "17eb7561-43e6-4a6d-b48f-26af69cf7ed3",
+              "leftValue": "={{ $json.image_only }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "25cef754-e036-4464-a0b9-df0753e2d2be",
+      "name": "Needs OCR?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "ocr",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "languages": "={{ ($('Configuration').first().json.ocrLanguages ?? 'English').split(',').map(s => s.trim()) }}"
+        },
+        "requestOptions": {},
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data"
+      },
+      "id": "1a859b62-8fce-4ee4-9a72-cb5dfab95d3a",
+      "name": "OCR PDF",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e5ec6a8-31e4-4770-9d1b-baef7967ca88",
+              "name": "ocrApplied",
+              "type": "boolean",
+              "value": true
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "f319b41d-221a-4f3a-a258-df9111d61fb9",
+      "name": "Mark OCR Applied",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9128c154-33bb-44c8-a0b9-6e1593d2f4a2",
+              "name": "ocrApplied",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "dcf0ea14-94c2-4786-a304-3337142bddb2",
+      "name": "Mark OCR Skipped",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "convertMarkdown",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "outputType": "json",
+          "pageBreakComments": "on"
+        },
+        "requestOptions": {}
+      },
+      "id": "a6fb69ea-d705-42fe-9be1-d9a9a4e13d12",
+      "name": "Convert PDF to Markdown",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Splits Markdown on pdfRest page-break comments so each chunk carries page number, file name, and Drive link.\nconst file = $('Watch Knowledge Folder').first().json;\nconst info = $('Reattach PDF').first().json;\nconst ocrApplied = $('Needs OCR?').first().json.image_only === true;\nconst out = [];\nfor (const item of $input.all()) {\n  const md = String(item.json.markdown ?? '');\n  const pages = md.split(/<!--\\s*page\\s*break\\s*-->/i);\n  pages.forEach((text, i) => {\n    const clean = text.trim();\n    if (!clean) return;\n    out.push({ json: {\n      text: clean,\n      fileName: file.name ?? 'document.pdf',\n      driveLink: file.webViewLink ?? '',\n      page: i + 1,\n      pageCount: info.page_count ?? pages.length,\n      ocrApplied,\n    } });\n  });\n}\nif (out.length === 0) out.push({ json: { text: '(no text extracted)', fileName: file.name, driveLink: file.webViewLink ?? '', page: 1, pageCount: 0, ocrApplied } });\nreturn out;"
+      },
+      "id": "b5119a83-ffc1-4b46-a9fa-0da4cc756041",
+      "name": "Split by Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "={{ $('Configuration').first().json.collectionName }}"
+        }
+      },
+      "id": "fa671763-8c0a-4e58-8958-0f9124cd713b",
+      "name": "Insert into Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "fileName",
+                "value": "={{ $json.fileName }}"
+              },
+              {
+                "name": "page",
+                "value": "={{ $json.page }}"
+              },
+              {
+                "name": "driveLink",
+                "value": "={{ $json.driveLink }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c1f9eb0e-af99-406d-b4c6-7f932b69b54c",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        2760,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 1200,
+        "chunkOverlap": 150,
+        "options": {}
+      },
+      "id": "44d6106c-45dd-41a7-a9f3-db50a11dfec6",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        2900,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/text-embedding-004"
+      },
+      "id": "6db4c337-0501-42f0-9c26-cf33e8f4700e",
+      "name": "Embeddings (Ingest)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One row per file for the manifest.\nconst items = $('Split by Page').all();\nconst f = items[0]?.json ?? {};\nreturn [{ json: { fileName: f.fileName, pageCount: f.pageCount, chunks: items.length, ocrApplied: f.ocrApplied, driveLink: f.driveLink } }];"
+      },
+      "id": "cebfef73-44ad-4fd0-88cf-507f79199584",
+      "name": "Summarize Ingest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Configuration').first().json.manifestSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Ingested": "={{ $now.toISO() }}",
+            "File": "={{ $json.fileName }}",
+            "Pages": "={{ $json.pageCount }}",
+            "Chunks": "={{ $json.chunks }}",
+            "OCR Applied": "={{ $json.ocrApplied }}",
+            "Drive Link": "={{ $json.driveLink }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "b5494bc4-c2fd-4d24-8cd9-c3a96fd90022",
+      "name": "Log to Manifest",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9552d160-3a66-4841-80a3-e00b76f7e688",
+      "name": "When Chat Message Received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "auto",
+        "options": {
+          "systemMessage": "You answer questions using only the PDF knowledge base tool. Search it before answering. For every fact you state, cite the source as (file name, page N) using the fileName and page metadata returned by the tool. If the knowledge base has no relevant content, say so plainly instead of guessing."
+        }
+      },
+      "id": "c9b83396-0278-4c5d-a10e-aeb98b360108",
+      "name": "Knowledge Base Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        300,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      },
+      "id": "b64e569d-87b2-4f1d-acfe-196553ec2797",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        220,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "pdf_knowledge_base",
+        "toolDescription": "Searches the indexed PDF documents. Returns the most relevant passages with fileName, page, and driveLink metadata.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "pdf-knowledge-base"
+        },
+        "topK": 6
+      },
+      "id": "0929b871-63e5-416b-adf4-b2069af75f2b",
+      "name": "PDF Knowledge Base Tool",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/text-embedding-004"
+      },
+      "id": "210b8f79-0830-4c5e-a5e1-ed8ca737ad0a",
+      "name": "Embeddings (Retrieve)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        520,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Ingest\nDrive Trigger \u2192 download \u2192 pdfRest Query PDF Info (page count, image-only) \u2192 Merge reattaches the PDF \u2192 OCR only if it's a scan \u2192 PDF to Markdown with page-break comments.",
+        "width": 1400,
+        "height": 150,
+        "color": 7
+      },
+      "id": "d07e4881-0e21-4305-8f71-91e15625738d",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Chunk with page metadata\nSplit by Page turns the Markdown into one item per page. The Data Loader attaches fileName, page, and driveLink as metadata so the agent can cite. The Simple Vector Store is in-memory: swap it for Pinecone, Qdrant, Supabase, or PGVector to persist across restarts.",
+        "width": 1000,
+        "height": 170,
+        "color": 7
+      },
+      "id": "c26c4797-ba71-40df-a8c7-af6dbd1c5b55",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Chat with citations\nThe agent uses the same vector store as a tool (same memoryKey as the insert step) and is instructed to cite (file name, page N) for every fact.",
+        "width": 900,
+        "height": 140,
+        "color": 7
+      },
+      "id": "bd858392-e4d6-4b4c-bd42-3ce335a75b86",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Watch Knowledge Folder": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Query PDF Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach PDF",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Query PDF Info": {
+      "main": [
+        [
+          {
+            "node": "Reattach PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach PDF": {
+      "main": [
+        [
+          {
+            "node": "Needs OCR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs OCR?": {
+      "main": [
+        [
+          {
+            "node": "OCR PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark OCR Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR PDF": {
+      "main": [
+        [
+          {
+            "node": "Mark OCR Applied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark OCR Applied": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark OCR Skipped": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PDF to Markdown": {
+      "main": [
+        [
+          {
+            "node": "Split by Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split by Page": {
+      "main": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Summarize Ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Ingest": {
+      "main": [
+        [
+          {
+            "node": "Log to Manifest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Ingest)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Chat Message Received": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Base Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Base Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Knowledge Base Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Knowledge Base Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Retrieve)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "PDF Knowledge Base Tool",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

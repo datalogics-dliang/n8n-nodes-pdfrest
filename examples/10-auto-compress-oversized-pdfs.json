@@ -1,0 +1,774 @@
+{
+  "name": "Auto-compress oversized PDFs dropped in Google Drive, log savings to Sheets, and alert Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Auto-compress oversized PDFs dropped in Google Drive, log savings to Sheets, and alert Slack\n\n**Community node.** This template uses the pdfRest API Toolkit community node (@pdfrest/n8n-nodes-pdfrest), so it runs on self-hosted n8n only. Install it under Settings > Community Nodes before importing.\n\n### Who it's for\nTeams that share PDFs through Drive and keep hitting email attachment limits, portal upload caps, or storage quotas: marketing, sales enablement, legal ops, anyone with a folder full of 30 MB decks and scans.\n\n### How it works\n1. The Google Drive Trigger watches an Inbox folder for new files.\n2. Google Drive downloads the file, and non-PDFs are dropped.\n3. pdfRest runs **Extract \u00b7 Query PDF Info (Metadata)** for the page count.\n4. pdfRest runs **Convert \u00b7 PDF to Markdown** and a Basic LLM Chain (Anthropic Claude shown; any chat model works) writes a one-line description of the document for the log and the Slack message.\n5. A Code node measures the original size and picks a compression level from the size bands in Configuration: files under the threshold are skipped, larger files get low, medium, or high compression.\n6. pdfRest runs **Optimize \u00b7 Compress PDF** at that level and a second Code node measures the result and computes the percentage saved.\n7. The optimized copy is uploaded to an Optimized folder in Drive.\n8. Every file, compressed or skipped, gets a row in a Google Sheets log with description, pages, before and after size, percentage saved, level, and the Drive link.\n9. Slack gets a two-line notice per file: what the document is, and the savings.\n\n### How to set up\n1. Install the pdfRest community node and add a pdfRest API credential.\n2. Connect Google Drive, Google Sheets, Slack, and an Anthropic (or other chat model) credential.\n3. In **Configuration**, paste the Optimized folder ID, the log Sheet ID, and the Slack channel ID. Adjust the size bands if you want.\n4. In **Watch Inbox Folder**, pick the Drive folder to watch.\n5. Create the log Sheet with these headers in row 1: Processed, File, Description, Pages, Original MB, Compressed MB, Saved %, Level, Status, Drive Link.\n6. Activate the workflow and drop a PDF in the Inbox folder.\n\n### Requirements\nSelf-hosted n8n, the pdfRest community node, a pdfRest API key, Google Drive, Google Sheets, Slack, and an Anthropic (or other chat model) credential.\n\n### How to customize\nChange the size bands in Configuration to tune how aggressive compression is. Add a Google Drive move or delete step after upload to retire the original. Swap the Drive Trigger for a Form Trigger to compress on demand, or for a Gmail Trigger to compress attachments. Replace Slack with Teams or email. Swap the Anthropic model for OpenAI, Gemini, or a local model, or delete the describe step if you only want sizes.",
+        "width": 560,
+        "height": 1160,
+        "color": 1
+      },
+      "id": "c1147727-a2d2-4570-ae0f-a9b013f528f5",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1080,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_INBOX_FOLDER_ID"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "50800cd9-3a1f-4038-8f54-81182cb7dbba",
+      "name": "Watch Inbox Folder",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "34ae5184-0b00-455f-9212-04e213cbe1b4",
+              "name": "optimizedFolderId",
+              "type": "string",
+              "value": "YOUR_OPTIMIZED_FOLDER_ID"
+            },
+            {
+              "id": "85a2ffb3-e28c-494d-beda-edf11bfe9b52",
+              "name": "logSheetId",
+              "type": "string",
+              "value": "YOUR_SPREADSHEET_ID"
+            },
+            {
+              "id": "704678c6-8c60-4fb5-8281-9a0cac801ef6",
+              "name": "slackChannel",
+              "type": "string",
+              "value": "YOUR_SLACK_CHANNEL_ID"
+            },
+            {
+              "id": "f25b8ae2-39eb-4ff3-a658-3be0921cb2d6",
+              "name": "skipBelowMB",
+              "type": "number",
+              "value": 2
+            },
+            {
+              "id": "ef54a946-7d64-4b54-8cbc-4aa769dddc85",
+              "name": "mediumAboveMB",
+              "type": "number",
+              "value": 8
+            },
+            {
+              "id": "2c166f93-d793-4789-9e3c-adb83f11f7d0",
+              "name": "highAboveMB",
+              "type": "number",
+              "value": 20
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9b414084-7ca3-45d8-a1bf-f7fda6bd25a2",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Watch Inbox Folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "546e4615-8629-4ed1-a5d5-61e14ca42d80",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "89aae11b-52fb-4486-91a9-6e52e760daf0",
+              "leftValue": "={{ $binary.data.mimeType }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "application/pdf"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bf74e159-e67b-472a-b4c3-3732be5ed98c",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdfInfo",
+        "queries": "selected",
+        "selectedQueries": [
+          "page_count"
+        ],
+        "options": {},
+        "requestOptions": {}
+      },
+      "id": "dbfda4a6-e1cc-4b99-ae59-3c4322494b61",
+      "name": "Query PDF Info",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "812b416f-f852-4bca-9fd9-75c47c14824d",
+      "name": "Reattach PDF",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Measures the original file and picks a compression level from the size bands in Configuration.\n// n8n reports binary size as a string such as \"12.4 MB\"; this converts it to bytes.\nconst cfg = $('Configuration').first().json;\nconst file = $('Watch Inbox Folder').first().json;\n\nfunction toBytes(sizeText) {\n  const m = String(sizeText ?? '').match(/([\\d.]+)\\s*(B|kB|KB|MB|GB)/i);\n  if (!m) return 0;\n  const n = parseFloat(m[1]);\n  const unit = m[2].toLowerCase();\n  return unit === 'gb' ? n * 1e9 : unit === 'mb' ? n * 1e6 : unit === 'kb' ? n * 1e3 : n;\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const bytes = toBytes(item.binary?.data?.fileSize);\n  const mb = bytes / 1e6;\n  let level = 'skip';\n  if (mb >= cfg.highAboveMB) level = 'high';\n  else if (mb >= cfg.mediumAboveMB) level = 'medium';\n  else if (mb >= cfg.skipBelowMB) level = 'low';\n  out.push({\n    json: {\n      ...item.json,\n      fileName: file.name ?? item.binary?.data?.fileName ?? 'file.pdf',\n      originalLink: file.webViewLink ?? '',\n      description: String(item.json.text ?? '').trim(),\n      originalBytes: bytes,\n      originalMB: Math.round(mb * 100) / 100,\n      compressionLevel: level,\n      needsCompression: level !== 'skip',\n      config: cfg,\n    },\n    binary: item.binary,\n  });\n}\nreturn out;"
+      },
+      "id": "6112f563-dcf5-4193-a85a-4e0f681de53f",
+      "name": "Measure and Choose Level",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c922a19e-7a55-4a8e-9be1-1e14866f37c1",
+              "leftValue": "={{ $json.needsCompression }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c4bd062a-b176-4c73-995a-3132792d40b9",
+      "name": "Needs Compression?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "compress",
+        "compressionLevel": "={{ $json.compressionLevel }}",
+        "downloadOutputFiles": true,
+        "outputFileDataFieldName": "data",
+        "requestOptions": {}
+      },
+      "id": "e87a1fa3-963c-436c-844f-ac5605835aa6",
+      "name": "Compress PDF",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Measures the compressed file and computes the savings. Carries the original measurements forward.\nfunction toBytes(sizeText) {\n  const m = String(sizeText ?? '').match(/([\\d.]+)\\s*(B|kB|KB|MB|GB)/i);\n  if (!m) return 0;\n  const n = parseFloat(m[1]);\n  const unit = m[2].toLowerCase();\n  return unit === 'gb' ? n * 1e9 : unit === 'mb' ? n * 1e6 : unit === 'kb' ? n * 1e3 : n;\n}\nconst before = $('Measure and Choose Level').first().json;\nconst out = [];\nfor (const item of $input.all()) {\n  const bytes = toBytes(item.binary?.data?.fileSize);\n  const saved = before.originalBytes > 0 ? Math.round((1 - bytes / before.originalBytes) * 1000) / 10 : 0;\n  out.push({\n    json: {\n      ...before,\n      compressedBytes: bytes,\n      compressedMB: Math.round(bytes / 1e4) / 100,\n      savedPct: saved,\n      status: 'compressed',\n    },\n    binary: item.binary,\n  });\n}\nreturn out;"
+      },
+      "id": "aadbe796-e909-49f9-98d8-33ae54171094",
+      "name": "Measure Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.config.optimizedFolderId }}"
+        },
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "70854a50-f186-4831-bf75-14ce10aa8f7e",
+      "name": "Upload Optimized Copy",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3120,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9492b74e-e4f3-4591-bd2a-4e34fd00ae40",
+              "name": "driveLink",
+              "type": "string",
+              "value": "={{ $json.webViewLink }}"
+            },
+            {
+              "id": "d8c8a01a-8192-4669-b109-024201cc106e",
+              "name": "result",
+              "type": "object",
+              "value": "={{ $('Measure Result').item.json }}"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "bbddbd8e-3410-4b3e-8ae7-e11a759a955b",
+      "name": "Record Compressed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3360,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "faf08d7f-25aa-4862-a861-58fa03e0506c",
+              "name": "driveLink",
+              "type": "string",
+              "value": "={{ $json.originalLink }}"
+            },
+            {
+              "id": "5896c599-6802-471c-b94c-e5132dbf52f0",
+              "name": "result",
+              "type": "object",
+              "value": "={{ Object.assign({}, $json, { compressedMB: $json.originalMB, savedPct: 0, status: 'skipped (below threshold)' }) }}"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "b4226f09-d298-4b06-a23f-9598d2525f1e",
+      "name": "Record Skipped",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Configuration').first().json.logSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Processed": "={{ $now.toISO() }}",
+            "File": "={{ $json.result.fileName }}",
+            "Description": "={{ $json.result.description }}",
+            "Pages": "={{ $json.result.page_count }}",
+            "Original MB": "={{ $json.result.originalMB }}",
+            "Compressed MB": "={{ $json.result.compressedMB }}",
+            "Saved %": "={{ $json.result.savedPct }}",
+            "Level": "={{ $json.result.compressionLevel }}",
+            "Status": "={{ $json.result.status }}",
+            "Drive Link": "={{ $json.driveLink }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "4d5dd253-f932-4163-aced-f153b1e09408",
+      "name": "Log to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Configuration').first().json.slackChannel }}"
+        },
+        "text": "=:page_facing_up: *{{ $json.result.fileName }}*\\n_{{ $json.result.description }}_\\n{{ $json.result.status }} \u00b7 {{ $json.result.originalMB }} MB \u2192 {{ $json.result.compressedMB }} MB \u00b7 {{ $json.result.savedPct }}% saved \u00b7 level {{ $json.result.compressionLevel }} \u00b7 {{ $json.result.page_count }} pages\\n<{{ $json.driveLink }}|Open in Drive>",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "8f2ba14f-452f-46c7-8ef5-618622f5a076",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Watch and fetch\nThe Drive Trigger fires on new files in the Inbox folder. Configuration holds the destination folder, log Sheet, Slack channel, and the three size bands. Download File puts the PDF on `data`; non-PDFs stop at Is PDF?.",
+        "width": 760,
+        "height": 160,
+        "color": 7
+      },
+      "id": "a657120f-9ab2-4dca-ad20-1a8c57a34e00",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Inspect and describe\nQuery PDF Info returns page count as JSON; the Merge reattaches the PDF. Convert PDF to Markdown feeds a Basic LLM Chain that writes a one-line description; a second Merge reattaches the PDF again. Measure and Choose Level then converts the reported size to bytes and picks skip / low / medium / high from the bands.",
+        "width": 1200,
+        "height": 160,
+        "color": 7
+      },
+      "id": "9925b0da-68f1-45e6-8a7d-085da55b6c4a",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        920,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Compress or skip\nFiles above the threshold go through Optimize \u00b7 Compress PDF and Measure Result computes the savings; the optimized copy is uploaded. Files below it are recorded as skipped with the original link.",
+        "width": 1000,
+        "height": 160,
+        "color": 7
+      },
+      "id": "363a5416-66fd-435b-83d4-5b3635361619",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 4. Log and notify\nOne Sheets row and one Slack line per file, compressed or skipped, so the log is a complete history of the folder.",
+        "width": 520,
+        "height": 140,
+        "color": 7
+      },
+      "id": "d453fa75-15f7-40a7-915c-411c411b67c5",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3560,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "convertMarkdown",
+        "options": {
+          "outputType": "json",
+          "pageBreakComments": "off"
+        },
+        "requestOptions": {}
+      },
+      "id": "ab2c266a-d070-40ec-96e4-e4a0562d52f7",
+      "name": "Convert PDF to Markdown",
+      "type": "@pdfrest/n8n-nodes-pdfrest.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Describe this document in one sentence of at most 20 words: what it is, who it is for or from, and its purpose. No preamble.\n\n<document>\n{{ ($json.markdown ?? JSON.stringify($json)).slice(0, 8000) }}\n</document>"
+      },
+      "id": "1e7a192b-e179-4f1b-8ab9-7fb18af9ec74",
+      "name": "Describe Document",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1680,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-haiku-4-5",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "id": "a70ac45c-364c-4ada-b2e8-c4af584bc059",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1680,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "8472bcd8-b9fd-4250-b0a0-960df9b73eb2",
+      "name": "Reattach After Describe",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1920,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Watch Inbox Folder": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Query PDF Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach PDF",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Query PDF Info": {
+      "main": [
+        [
+          {
+            "node": "Reattach PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach PDF": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to Markdown",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reattach After Describe",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Measure and Choose Level": {
+      "main": [
+        [
+          {
+            "node": "Needs Compression?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Compression?": {
+      "main": [
+        [
+          {
+            "node": "Compress PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compress PDF": {
+      "main": [
+        [
+          {
+            "node": "Measure Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Measure Result": {
+      "main": [
+        [
+          {
+            "node": "Upload Optimized Copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Optimized Copy": {
+      "main": [
+        [
+          {
+            "node": "Record Compressed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Compressed": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Skipped": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PDF to Markdown": {
+      "main": [
+        [
+          {
+            "node": "Describe Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Describe Document",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Describe Document": {
+      "main": [
+        [
+          {
+            "node": "Reattach After Describe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reattach After Describe": {
+      "main": [
+        [
+          {
+            "node": "Measure and Choose Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
