@@ -1,6 +1,6 @@
 {
 	"name": "@pdfrest/n8n-nodes-pdfrest",
-	"version": "0.1.3",
+	"version": "0.2.0",
 	"description": "Convert, compress, secure, OCR, and extract PDF data, built on the Adobe PDF Library. Runs in the cloud or self-hosted.",
 	"license": "MIT",
 	"engines": {
