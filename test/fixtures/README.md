@@ -5,8 +5,8 @@ existing local test assets unchanged.
 
 `zugferd/factur-x-minimum.xml` is the Factur-X MINIMUM invoice fixture from
 the [factur-x project](https://github.com/akretion/factur-x/blob/master/tests/fixtures/xml/factur-x-minimum.xml).
-Its redistribution terms are in `zugferd/LICENSE.txt`. The live workflows
-use it to create a ZUGFeRD PDF and then require validation status `VALID`.
+Its redistribution terms are in `zugferd/LICENSE.txt`. The multipart live
+workflow uses it to create a ZUGFeRD PDF and require validation status `VALID`.
 
 The signing fixture deliberately omits `02-credential.pfx` and
 `03-password.txt`. Generate those files for each test run with:
