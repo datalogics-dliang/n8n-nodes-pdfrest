@@ -196,6 +196,7 @@ describe('Convert PDF Colors operation', () => {
 			'includeFileInfo',
 			'output',
 			'preserveBlack',
+			'renderingIntent',
 			'responseType',
 		]);
 		expect(getOptionalField('output')).toMatchObject({
@@ -213,6 +214,19 @@ describe('Convert PDF Colors operation', () => {
 			],
 			default: 'false',
 			routing: { send: { type: 'body', property: 'preserve_black' } },
+		});
+		expect(getOptionalField('renderingIntent')).toMatchObject({
+			displayName: 'Rendering Intent',
+			type: 'options',
+			options: [
+				{ name: 'Absolute Colorimetric', value: 'absolute_colorimetric' },
+				{ name: 'Perceptual', value: 'perceptual' },
+				{ name: 'Profile Default', value: 'profile' },
+				{ name: 'Relative Colorimetric', value: 'relative_colorimetric' },
+				{ name: 'Saturation', value: 'saturation' },
+			],
+			default: 'profile',
+			routing: { send: { type: 'body', property: 'rendering_intent' } },
 		});
 	});
 
@@ -271,6 +285,7 @@ describe('Convert PDF Colors operation', () => {
 			'profile',
 			'output',
 			'preserve_black',
+			'rendering_intent',
 		]);
 	});
 });
