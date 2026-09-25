@@ -18,6 +18,7 @@ import {
 	convertPowerPointOperation,
 } from './convertPowerPoint.operation';
 import { convertPngDescription, convertPngOperation } from './convertPng.operation';
+import { convertPostscriptDescription, convertPostscriptOperation } from './convertPostscript.operation';
 import { convertWordDescription, convertWordOperation } from './convertWord.operation';
 import {
 	convertXfaToAcroformsDescription,
@@ -95,6 +96,7 @@ const operationOptions = [
 	convertPdfAOperation,
 	convertPdfXOperation,
 	convertPngOperation,
+	convertPostscriptOperation,
 	convertPowerPointOperation,
 	convertTifOperation,
 	convertToPdfOperation,
@@ -259,6 +261,7 @@ const basePdfRestDescription: INodeProperties[] = [
 	...convertMarkdownDescription,
 	...convertToPdfDescription,
 	...convertPngDescription,
+	...convertPostscriptDescription,
 	...convertPowerPointDescription,
 	...convertTifDescription,
 	...convertWordDescription,

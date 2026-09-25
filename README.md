@@ -11,7 +11,7 @@ The node groups its operations by task:
 - **Create and modify:** create blank PDFs; add attachments, images, shapes,
   tables, and text; merge and split PDFs; and set page boxes.
 - **Convert:** convert files or webpages to PDF; convert PDFs to BMP, GIF, JPG,
-  PNG, TIFF, Excel, PowerPoint, Word, Markdown, PDF/A, and PDF/X.
+  PNG, TIFF, Excel, PowerPoint, Word, Markdown, PostScript, PDF/A, and PDF/X.
 - **Extract and analyze:** extract images and text, make PDFs searchable with
   OCR, query PDF information, summarize PDFs, and translate PDF text.
 - **Forms:** import and export form data, flatten forms, and convert XFA forms
