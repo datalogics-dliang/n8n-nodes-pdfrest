@@ -9,7 +9,8 @@ with file, resource-ID, and URL inputs where supported by each operation.
 The node groups its operations by task:
 
 - **Create and modify:** create blank PDFs; add attachments, images, shapes,
-  tables, and text; merge and split PDFs; and set page boxes.
+  tables, and text; create ZUGFeRD or Factur-X invoice PDFs; merge and split
+  PDFs; and set page boxes.
 - **Convert:** convert files or webpages to PDF; convert PDFs to BMP, GIF, JPG,
   PNG, TIFF, Excel, PowerPoint, Word, Markdown, PostScript, PDF/A, and PDF/X.
 - **Extract and analyze:** extract images and text, make PDFs searchable with

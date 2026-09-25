@@ -34,6 +34,7 @@ interface InputSourceOptions {
 }
 
 interface SecondaryFileInputSourceOptions {
+	allowNone?: boolean;
 	displayName?: string;
 	fileFieldName: string;
 	fileInputDataFieldName: string;
@@ -202,6 +203,7 @@ export function createInputSourceFields({
 
 /** Creates a file-or-resource-ID selector for an auxiliary request file. */
 export function createSecondaryFileInputSourceFields({
+	allowNone = false,
 	displayName = 'Input Source',
 	fileFieldName,
 	fileInputDataFieldName,
@@ -222,10 +224,12 @@ export function createSecondaryFileInputSourceFields({
 			type: 'options',
 			noDataExpression: true,
 			options: [
+				...(allowNone ? [{ name: 'None', value: 'none' }] : []),
 				{ name: 'Input File', value: 'inputFile' },
 				{ name: 'Resource ID', value: 'resourceId' },
 			],
 			default: 'inputFile',
+			...(allowNone ? { default: 'none' } : {}),
 			displayOptions: { show: baseShow },
 		},
 		{

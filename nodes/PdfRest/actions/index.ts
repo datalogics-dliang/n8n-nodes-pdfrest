@@ -26,6 +26,7 @@ import {
 } from './convertXfaToAcroforms.operation';
 import { convertPdfADescription, convertPdfAOperation } from './convertPdfA.operation';
 import { convertPdfXDescription, convertPdfXOperation } from './convertPdfX.operation';
+import { createZugferdDescription, createZugferdOperation } from './createZugferd.operation';
 import { deleteResourceDescription, deleteResourceOperation } from './deleteResource.operation';
 import { deleteResourcesDescription, deleteResourcesOperation } from './deleteResources.operation';
 import { decryptDescription, decryptOperation } from './decrypt.operation';
@@ -102,6 +103,7 @@ const operationOptions = [
 	convertToPdfOperation,
 	convertWordOperation,
 	convertXfaToAcroformsOperation,
+	createZugferdOperation,
 	decryptOperation,
 	deleteResourceOperation,
 	deleteResourcesOperation,
@@ -268,6 +270,7 @@ const basePdfRestDescription: INodeProperties[] = [
 	...convertXfaToAcroformsDescription,
 	...convertPdfADescription,
 	...convertPdfXDescription,
+	...createZugferdDescription,
 	...deleteResourcesDescription,
 	...deleteResourceDescription,
 	...decryptDescription,
