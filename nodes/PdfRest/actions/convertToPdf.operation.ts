@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import { createNonEmptyBodyStringField } from '../helpers/bodyFields';
 import { createIncludeFileInfoField, createResponseTypeField } from '../helpers/headers';
-import { createInputSourceFields } from '../helpers/inputSource';
+import { createInputSourceFields, createSecondaryFileInputSourceFields } from '../helpers/inputSource';
 import { createDeferredMultipartUploadPreSend } from '../helpers/multipart';
 
 type ConversionType =
@@ -25,6 +25,7 @@ type ConversionType =
 	| 'word'
 	| 'xml';
 type InputType = 'inputFile' | 'resourceId' | 'url';
+type JobOptionsInputType = 'none' | 'inputFile' | 'resourceId';
 
 const structuredTextOptionsExample = JSON.stringify(
 	{
@@ -73,6 +74,7 @@ const structuredTextProperties = [
 	'structured_text_options',
 ] as const;
 const markdownProperties = ['image_files', 'image_ids'] as const;
+const jobOptionsProperties = ['job_options', 'job_options_id'] as const;
 const allFormatProperties = [
 	...optimizationProperties,
 	...taggedPdfProperties,
@@ -80,6 +82,7 @@ const allFormatProperties = [
 	...htmlProperties,
 	...structuredTextProperties,
 	...markdownProperties,
+	...jobOptionsProperties,
 ] as const;
 
 function normalizeStructuredTextOptions(
@@ -194,9 +197,32 @@ function createConvertToPdfPreSend(): PreSendAction {
 		if (conversionType === 'markdown') {
 			markdownProperties.forEach((property) => activeProperties.add(property));
 		}
+		if (conversionType === 'postscript' && inputType !== 'url') {
+			jobOptionsProperties.forEach((property) => activeProperties.add(property));
+		}
 
 		for (const property of allFormatProperties) {
 			if (!activeProperties.has(property)) deleteBodyProperty(body, property);
+		}
+		if (conversionType === 'postscript' && inputType !== 'url') {
+			const jobOptionsInputType = this.getNodeParameter(
+				'jobOptionsInputType',
+				'none',
+			) as JobOptionsInputType;
+			if (jobOptionsInputType === 'none') {
+				deleteBodyProperty(body, 'job_options');
+				deleteBodyProperty(body, 'job_options_id');
+			} else if (jobOptionsInputType === 'inputFile') {
+				deleteBodyProperty(body, 'job_options_id');
+			} else if (jobOptionsInputType === 'resourceId') {
+				deleteBodyProperty(body, 'job_options');
+				const jobOptionsId = getBodyValue(body, 'job_options_id');
+				if (typeof jobOptionsId !== 'string' || jobOptionsId.trim().length === 0) {
+					throw new NodeOperationError(this.getNode(), 'Job Options Resource ID is required.');
+				}
+			} else {
+				throw new NodeOperationError(this.getNode(), 'Job Options Input Source has an invalid value.');
+			}
 		}
 
 		if (structuredTextConversionTypes.includes(conversionType)) {
@@ -315,6 +341,20 @@ export const convertToPdfDescription: INodeProperties[] = [
 			'Select the input format to choose which format-specific optional fields are available. Leave this field set to Not Specified for images, email, or when you do not need those fields.',
 		routing: { send: { preSend: [createConvertToPdfPreSend()] } },
 	},
+	...createSecondaryFileInputSourceFields({
+		allowNone: true,
+		displayName: 'Job Options Input Source',
+		operation: 'convertToPdf',
+		show: { conversionType: ['postscript'], inputType: ['inputFile', 'resourceId'] },
+		inputTypeName: 'jobOptionsInputType',
+		fileFieldName: 'job_options',
+		fileInputDataFieldName: 'jobOptionsFileDataFieldName',
+		fileInputDataFieldDisplayName: 'Job Options Input File Data Field Name',
+		resourceIdName: 'jobOptionsResourceId',
+		resourceIdDisplayName: 'Job Options Resource ID',
+		resourceIdBodyProperty: 'job_options_id',
+		resourceIdDescription: 'The resource ID of a previously uploaded .joboptions profile',
+	}),
 	{
 		displayName: 'Optional Fields',
 		name: 'options',
