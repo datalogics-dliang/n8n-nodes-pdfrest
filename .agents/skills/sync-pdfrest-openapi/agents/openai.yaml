@@ -1,0 +1,3 @@
+interface:
+  display_name: "Sync pdfRest OpenAPI"
+  short_description: "Align pdfRest operations with the current API spec"
