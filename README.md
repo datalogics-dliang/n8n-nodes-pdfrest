@@ -14,7 +14,8 @@ The node groups its operations by task:
 - **Convert:** convert files or webpages to PDF; convert PDFs to BMP, GIF, JPG,
   PNG, TIFF, Excel, PowerPoint, Word, Markdown, PostScript, PDF/A, and PDF/X.
 - **Extract and analyze:** extract images and text, make PDFs searchable with
-  OCR, query PDF information, summarize PDFs, and translate PDF text.
+  OCR, query PDF information, summarize PDFs, translate PDF text, and validate
+  ZUGFeRD or Factur-X invoice PDFs.
 - **Forms:** import and export form data, flatten forms, and convert XFA forms
   to AcroForms.
 - **Optimize:** compress PDFs, convert colors, flatten annotations, layers, or

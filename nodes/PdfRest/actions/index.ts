@@ -68,6 +68,7 @@ import { translateDescription, translateOperation } from './translate.operation'
 import { unrestrictDescription, unrestrictOperation } from './unrestrict.operation';
 import { unzipDescription, unzipOperation } from './unzip.operation';
 import { uploadDescription, uploadOperation } from './upload.operation';
+import { validateZugferdDescription, validateZugferdOperation } from './validateZugferd.operation';
 import { watermarkDescription, watermarkOperation } from './watermark.operation';
 import { zipDescription, zipOperation } from './zip.operation';
 import { createPdfRestRequestLogger } from '../helpers/requestLogger';
@@ -135,6 +136,7 @@ const operationOptions = [
 	unrestrictOperation,
 	unzipOperation,
 	uploadOperation,
+	validateZugferdOperation,
 	watermarkOperation,
 	zipOperation,
 ].sort((left, right) => String(left.action).localeCompare(String(right.action)));
@@ -302,6 +304,7 @@ const basePdfRestDescription: INodeProperties[] = [
 	...unrestrictDescription,
 	...unzipDescription,
 	...uploadDescription,
+	...validateZugferdDescription,
 	...watermarkDescription,
 	...zipDescription,
 	{
