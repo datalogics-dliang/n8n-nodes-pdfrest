@@ -1476,7 +1476,7 @@
     },
     {
       "parameters": {
-        "numberInputs": 3
+        "numberInputs": 4
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
@@ -2794,6 +2794,115 @@
       ],
       "id": "1c0f6511-fcab-4384-aa60-725798e712bf",
       "name": "Record Digitally Sign PDF Result"
+    },
+    {
+      "parameters": {
+        "fileSelector": "test/fixtures/01-sample-pdf.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        12544
+      ],
+      "id": "11b1847d-09c3-498a-bd78-6acaa65acf5f",
+      "name": "Read PDF for PostScript",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -912,
+        12736
+      ],
+      "id": "f1337357-fbe3-4ccf-8676-49552b5b57b7",
+      "name": "Record Read PDF for PostScript Error"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "options": {
+          "includeFileInfo": false
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        12544
+      ],
+      "id": "507c6dac-d585-4311-915e-b2c976478dc9",
+      "name": "Upload PDF for PostScript",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -688,
+        12736
+      ],
+      "id": "ead0dc6e-308d-4093-af1f-c4957e486386",
+      "name": "Record Upload PDF for PostScript Error"
+    },
+    {
+      "parameters": {
+        "operation": "convertPostscript",
+        "resourceId": "={{ $json.files[0].id }}",
+        "options": {
+          "includeFileInfo": false
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        12544
+      ],
+      "id": "4ec95b00-e32c-4c63-aad1-273ec0fa9001",
+      "name": "Convert PDF to PostScript",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -464,
+        12544
+      ],
+      "id": "5f6119fa-18e6-4c7d-974b-da3d30e2c1d9",
+      "name": "Record Convert PDF to PostScript Result"
     }
   ],
   "connections": {
@@ -2867,6 +2976,11 @@
           },
           {
             "node": "Read Files From Disk for Signed PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read PDF for PostScript",
             "type": "main",
             "index": 0
           }
@@ -4987,6 +5101,93 @@
         [
           {
             "node": "Merge Complex Results 2",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Read PDF for PostScript": {
+      "main": [
+        [
+          {
+            "node": "Upload PDF for PostScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Read PDF for PostScript Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF for PostScript": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to PostScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Upload PDF for PostScript Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PDF to PostScript": {
+      "main": [
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Read PDF for PostScript Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Record Upload PDF for PostScript Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Record Convert PDF to PostScript Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
             "type": "main",
             "index": 3
           }
