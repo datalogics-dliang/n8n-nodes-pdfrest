@@ -117,6 +117,11 @@ it.
 
 The account should have enough quota for both all-endpoint workflows on every
 same-repository pull request, `develop` push, manual run, and release.
+Both workflows exercise PDF to PostScript conversion and create a ZUGFeRD PDF
+from the committed invoice XML fixture before validating the generated PDF.
+The validation branch fails if the response status is anything other than
+`VALID`, even when the API returns HTTP 200. The resource ID workflow uploads
+the XML before creation; the multipart workflow sends the XML file directly.
 Monitor usage in pdfRest and rotate the key through the GitHub environment
 rather than changing repository files.
 
