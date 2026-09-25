@@ -125,6 +125,10 @@ not add a token fallback or publish locally.
   If the specification moves behind an API, update this documented source or
   its documented discovery mechanism. Do not select the source through an
   environment variable.
+- Record the OpenAPI revision reviewed for the node in the root
+  `.pdfrest-openapi-version` file. Update it when reviewing a newer revision
+  and describe any known unimplemented API features in the pull request. The
+  recorded revision is a review baseline, not a completeness claim.
 - Keep credentials, nodes, build output registrations, package metadata, and
   documentation synchronized as the starter examples are replaced.
 - Use Vitest for unit and API-contract tests. Cover pure helper behavior and
