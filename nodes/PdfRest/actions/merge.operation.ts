@@ -123,7 +123,7 @@ export const mergeDescription: INodeProperties[] = [
 			],
 		},
 		required: true,
-		placeholder: 'Add PDF',
+		placeholder: 'Add PDF to Merge',
 		displayOptions: {
 			show: {
 				operation: ['merge'],

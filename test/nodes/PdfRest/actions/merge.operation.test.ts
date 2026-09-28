@@ -54,7 +54,7 @@ describe('Merge PDFs operation', () => {
 		const mergeInputs = mergeDescription[0];
 		expect(mergeInputs).toMatchObject({
 			displayName: 'PDFs to Merge',
-			placeholder: 'Add PDF',
+			placeholder: 'Add PDF to Merge',
 			name: 'mergeInputs',
 			type: 'fixedCollection',
 			typeOptions: { multipleValues: true },
