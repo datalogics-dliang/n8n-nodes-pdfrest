@@ -16,6 +16,13 @@ Use this skill from the `n8n-nodes-pdfrest` repository root. Read `AGENTS.md` fi
 ## Implement and commit
 
 - Reconcile each API feature or coherent group of related fields with the spec. Follow the repository's declarative node conventions, use n8n HTTP helpers, and add no external runtime dependencies. Keep credentials, operation registration, tests, and relevant documentation synchronized.
+- For every new JSON field, follow schema references to its OpenAPI example
+  and use that exact value as the field's initial default when the user selects
+  it. Add a notice linked to the official documentation for that specific field,
+  shown only while the field is selected, following the existing JSON-field
+  notice pattern. Test both the default and the notice's visibility condition.
+  If the specification has no example or field documentation, report the gap
+  instead of inventing a value or link.
 - Commit each new endpoint or independently reviewable behavior as a separate, human-understandable change with its tests. Group tightly coupled fields when splitting would leave an incoherent intermediate state. Before every commit, inspect the staged file list and staged diff and follow the repository's commit-message rules.
 - Run build, lint, and unit/API-contract tests. Keep quota-consuming live API checks separate from static validation. Report any live checks that could not be run.
 - After all identified API discrepancies are implemented, update root `.pdfrest-openapi-version` to the fetched `info.version` and commit the changed review baseline. If an API discrepancy remains unimplemented, leave the marker unchanged and report the blocker. A deferred CI test branch alone does not block the version update; describe that coverage gap explicitly.
