@@ -139,6 +139,23 @@ describe('Create ZUGFeRD PDF operation', () => {
 		});
 	});
 
+	it('shows Render Options documentation only when the optional field is selected', () => {
+		const optionsIndex = createZugferdDescription.findIndex((entry) => entry.name === 'options');
+		expect(createZugferdDescription[optionsIndex + 1]).toMatchObject({
+			displayName:
+				'Render Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/create-zugferd-pdf/POST/zugferd-pdf.body.render_options/" target="_blank">Learn how to build the object</a>',
+			name: 'renderOptionsNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					operation: ['createZugferd'],
+					'/options.renderOptions': [{ _cnd: { exists: true } }],
+				},
+			},
+		});
+	});
+
 	it('requires a source PDF when regeneration is enabled', async () => {
 		await expect(
 			prepare?.call(context(), {
