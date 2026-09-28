@@ -65,6 +65,38 @@ describe('resource ID live workflow', () => {
 });
 
 describe('multipart live workflow', () => {
+	it('aggregates PostScript and job options before conversion', () => {
+		const workflow = multipartWorkflow as Workflow;
+		const read = 'Read PostScript and Job Options';
+		const aggregate = 'Aggregate PostScript and Job Options';
+		const convert = 'Convert PostScript With Job Options';
+		const result = 'Record PostScript With Job Options Result';
+		expect(node(workflow, read).parameters.fileSelector).toBe('test/fixtures/ps-joboptions/*');
+		expect(node(workflow, aggregate).parameters).toMatchObject({
+			aggregate: 'aggregateAllItemData',
+			options: { includeBinaries: true },
+		});
+		expect(node(workflow, convert).parameters).toMatchObject({
+			operation: 'convertToPdf',
+			inputType: 'inputFile',
+			inputFileDataFieldName: 'data',
+			conversionType: 'postscript',
+			options: { jobOptions: { source: { inputType: 'inputFile', fileDataFieldName: 'data_1' } } },
+		});
+		connects(workflow, read, aggregate);
+		connects(workflow, aggregate, convert);
+		connects(workflow, convert, result);
+		connects(workflow, convert, result, 1);
+		for (const name of [
+			result,
+			'Record Read PostScript and Job Options Error',
+			'Record Aggregate PostScript and Job Options Error',
+		]) {
+			connects(workflow, name, 'Merge Single-Input Results 4', 0, 5);
+		}
+		expect(node(workflow, 'Merge Single-Input Results 4').parameters.numberInputs).toBe(6);
+	});
+
 	it('passes the read PDF directly to PostScript conversion', () => {
 		const workflow = multipartWorkflow as Workflow;
 		const parameters = node(workflow, 'Convert PDF to PostScript').parameters;
