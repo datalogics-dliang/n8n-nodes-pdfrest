@@ -89,16 +89,6 @@ const secondaryFileDescriptions = [
 		resourceIdBodyProperty: 'private_key_id',
 	},
 	{
-		name: 'sign logo',
-		description: signDescription,
-		inputTypeName: 'logoInputType',
-		fileInputDataFieldName: 'logoFileDataFieldName',
-		fileInputDataFieldDisplayName: 'Logo Input File Data Field Name',
-		resourceIdName: 'logoId',
-		resourceIdDisplayName: 'Logo Resource ID',
-		resourceIdBodyProperty: 'logo_id',
-	},
-	{
 		name: 'watermark',
 		description: watermarkDescription,
 		inputTypeName: 'watermarkInputType',

@@ -220,10 +220,14 @@ function createLogoBranchPreSend(): PreSendAction {
 		delete nextBody.logo_id;
 		delete nextBody.logo_file;
 
+		const hasLogoGroup = Object.prototype.hasOwnProperty.call(options, 'logo');
+		const logo = options.logo as IDataObject | undefined;
+		const source = logo?.source as IDataObject | undefined;
 		const hasFile = typeof options.logoFileDataFieldName === 'string';
 		const hasResourceId = typeof options.logoId === 'string';
-		const inputType =
-			options.logoInputType ?? (hasFile ? 'inputFile' : hasResourceId ? 'resourceId' : undefined);
+		const inputType = hasLogoGroup
+			? source?.inputType ?? 'inputFile'
+			: options.logoInputType ?? (hasFile ? 'inputFile' : hasResourceId ? 'resourceId' : undefined);
 
 		if (inputType === undefined) {
 			requestOptions.body = nextBody;
@@ -231,7 +235,9 @@ function createLogoBranchPreSend(): PreSendAction {
 		}
 
 		if (inputType === 'inputFile') {
-			const binaryDataPropertyName = options.logoFileDataFieldName;
+			const binaryDataPropertyName = hasLogoGroup
+				? this.getNodeParameter('options.logo.source.fileDataFieldName', 'data')
+				: options.logoFileDataFieldName;
 			if (typeof binaryDataPropertyName !== 'string' || binaryDataPropertyName.trim().length < 1) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -240,14 +246,18 @@ function createLogoBranchPreSend(): PreSendAction {
 			}
 			nextBody.logo_file = binaryDataPropertyName.trim();
 			requestOptions.body = nextBody;
-			return createDeferredMultipartUploadPreSend({
-				binaryDataPropertyNameParameter: 'options.logoFileDataFieldName',
-				fileFieldName: 'logo_file',
-			}).call(this, requestOptions);
+			return hasLogoGroup
+				? requestOptions
+				: createDeferredMultipartUploadPreSend({
+						binaryDataPropertyNameParameter: 'options.logoFileDataFieldName',
+						fileFieldName: 'logo_file',
+					}).call(this, requestOptions);
 		}
 
 		if (inputType === 'resourceId') {
-			const resourceId = options.logoId;
+			const resourceId = hasLogoGroup
+				? this.getNodeParameter('options.logo.source.resourceId', '')
+				: options.logoId;
 			if (typeof resourceId !== 'string' || resourceId.trim().length < 1) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -395,38 +405,35 @@ export const signDescription: INodeProperties[] = [
 		options: [
 			createIncludeFileInfoField('sign'),
 			{
-				displayName: 'Logo Input Source',
-				name: 'logoInputType',
-				type: 'options',
+				displayName: 'Logo',
+				name: 'logo',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: false },
+				default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
+				description: 'Choose an optional JPG, PNG, TIFF, or BMP signature logo',
 				options: [
-					{ name: 'Input File', value: 'inputFile' },
-					{ name: 'Resource ID', value: 'resourceId' },
-				],
-				default: 'inputFile',
-				description: 'Choose how to provide the optional signature logo',
-			},
-			{
-				displayName: 'Logo Resource ID',
-				name: 'logoId',
-				type: 'string',
-				default: '',
-				displayOptions: { show: { logoInputType: ['resourceId'] } },
-				description: 'The resource ID of a JPG, PNG, TIFF, or BMP signature logo',
-				routing: { send: { type: 'body', property: 'logo_id' } },
-			},
-			{
-				displayName: 'Logo Input File Data Field Name',
-				name: 'logoFileDataFieldName',
-				type: 'string',
-				default: 'data',
-				displayOptions: { show: { logoInputType: ['inputFile'] } },
-				description: 'The name of the input field containing the signature logo file',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'logo_file',
+					{
+						displayName: 'Logo',
+						name: 'source',
+						values: [
+							...createSecondaryFileInputSourceFields({
+								operation: 'sign',
+								nestedPath: 'options.logo.source',
+								inputTypeName: 'inputType',
+								fileFieldName: 'logo_file',
+								fileInputDataFieldName: 'fileDataFieldName',
+								fileInputDataFieldDisplayName: 'Logo Input File Data Field Name',
+								fileInputDescription:
+									'The name of the input field containing the signature logo file',
+								resourceIdName: 'resourceId',
+								resourceIdDisplayName: 'Logo Resource ID',
+								resourceIdBodyProperty: 'logo_id',
+								resourceIdDescription:
+									'The resource ID of a JPG, PNG, TIFF, or BMP signature logo',
+							}),
+						],
 					},
-				},
+				],
 			},
 			createNonEmptyBodyStringField({
 				displayName: 'Output File Name',
