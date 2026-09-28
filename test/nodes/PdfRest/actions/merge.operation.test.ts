@@ -53,14 +53,17 @@ describe('Merge PDFs operation', () => {
 	it('collects ordered input files or resource IDs with page expressions', () => {
 		const mergeInputs = mergeDescription[0];
 		expect(mergeInputs).toMatchObject({
-			displayName: 'Merge Inputs',
+			displayName: 'PDFs to Merge',
+			placeholder: 'Add PDF',
 			name: 'mergeInputs',
 			type: 'fixedCollection',
 			typeOptions: { multipleValues: true },
+			default: { input: [{ pages: '1-last' }] },
 			required: true,
 			displayOptions: { show: { operation: ['merge'] } },
 			options: [
 				{
+					displayName: 'PDF',
 					name: 'input',
 					values: [
 						{
@@ -87,7 +90,10 @@ describe('Merge PDFs operation', () => {
 							displayName: 'Pages',
 							name: 'pages',
 							type: 'string',
+							default: '1-last',
 							required: true,
+							description:
+								'The pages to include from this PDF; use "all" or "1-last" for every page, or select pages with numbers, ranges, "even", or "odd"',
 						},
 					],
 				},
