@@ -13,6 +13,28 @@ import { createResourceIdOperation } from '../helpers/resourceId';
 
 type OptionalSource = 'none' | 'inputFile' | 'resourceId';
 
+const renderOptionsExample = JSON.stringify(
+	{
+		logo_corner: 'top-right',
+		font: 'Arial',
+		bold_font: 'Arial Bold',
+		locale: 'de-DE',
+		label_language: 'en',
+		currency_display: 'symbol',
+		date_format: 'dd.MM.yyyy',
+		decimal_precision: 2,
+		text_color_rgb: [26, 31, 41],
+		muted_text_color_cmyk: [10, 5, 0, 55],
+		accent_color_rgb: [20, 64, 115],
+		border_color_cmyk: [12, 7, 0, 20],
+		table_header_color_rgb: [20, 64, 115],
+		table_alternate_color_cmyk: [4, 2, 0, 2],
+		footer_message: 'Thank you for your business.',
+	},
+	null,
+	2,
+);
+
 function createZugferdRequestPreSend(): PreSendAction {
 	return async function prepareZugferdRequest(
 		requestOptions: IHttpRequestOptions,
@@ -153,7 +175,7 @@ export const createZugferdDescription: INodeProperties[] = [
 				displayName: 'Render Options',
 				name: 'renderOptions',
 				type: 'json',
-				default: '{}',
+				default: renderOptionsExample,
 				description:
 				'A JSON object for generated PDF appearance, such as locale, label_language, font, and accent_color_rgb',
 				routing: { send: { type: 'body', property: 'render_options' } },

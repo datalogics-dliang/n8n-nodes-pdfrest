@@ -118,6 +118,27 @@ describe('Create ZUGFeRD PDF operation', () => {
 		expect(objectRequest.body).toMatchObject({ render_options: { locale: 'en-GB' } });
 	});
 
+	it('starts selected render options with the OpenAPI example', () => {
+		const renderOptions = field('options')?.options?.find((entry) => entry.name === 'renderOptions');
+		expect(JSON.parse(renderOptions?.default as string)).toEqual({
+			logo_corner: 'top-right',
+			font: 'Arial',
+			bold_font: 'Arial Bold',
+			locale: 'de-DE',
+			label_language: 'en',
+			currency_display: 'symbol',
+			date_format: 'dd.MM.yyyy',
+			decimal_precision: 2,
+			text_color_rgb: [26, 31, 41],
+			muted_text_color_cmyk: [10, 5, 0, 55],
+			accent_color_rgb: [20, 64, 115],
+			border_color_cmyk: [12, 7, 0, 20],
+			table_header_color_rgb: [20, 64, 115],
+			table_alternate_color_cmyk: [4, 2, 0, 2],
+			footer_message: 'Thank you for your business.',
+		});
+	});
+
 	it('requires a source PDF when regeneration is enabled', async () => {
 		await expect(
 			prepare?.call(context(), {
