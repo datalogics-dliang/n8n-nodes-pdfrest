@@ -416,6 +416,13 @@ export const signDescription: INodeProperties[] = [
 						displayName: 'Logo',
 						name: 'source',
 						values: [
+							{
+								displayName:
+									'Add a JPG, PNG, TIFF, or BMP image to appear with the digital signature',
+								name: 'logoNotice',
+								type: 'notice',
+								default: '',
+							},
 							...createSecondaryFileInputSourceFields({
 								operation: 'sign',
 								nestedPath: 'options.logo.source',

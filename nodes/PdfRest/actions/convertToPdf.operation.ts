@@ -460,6 +460,13 @@ export const convertToPdfDescription: INodeProperties[] = [
 						displayName: 'Job Options',
 						name: 'source',
 						values: [
+							{
+								displayName:
+									'A .joboptions file controls PostScript conversion settings. Remove this field to use default settings.',
+								name: 'jobOptionsNotice',
+								type: 'notice',
+								default: '',
+							},
 							...createSecondaryFileInputSourceFields({
 								operation: 'convertToPdf',
 								nestedPath: 'options.jobOptions.source',

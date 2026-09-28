@@ -180,6 +180,12 @@ describe('Convert to PDF operation', () => {
 				},
 			},
 		});
+		expect(getOptionalField('jobOptions')?.options?.[0]?.values?.[0]).toMatchObject({
+			displayName:
+				'A .joboptions file controls PostScript conversion settings. Remove this field to use default settings.',
+			name: 'jobOptionsNotice',
+			type: 'notice',
+		});
 		expect(getJobOptionsField('inputType')).toMatchObject({
 			displayName: 'Input Source',
 			type: 'options',

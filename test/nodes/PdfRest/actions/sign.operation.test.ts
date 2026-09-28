@@ -351,6 +351,11 @@ describe('Sign PDF operation', () => {
 			typeOptions: { multipleValues: false },
 			default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
 		});
+		expect(getOptionalField('logo')?.options?.[0]?.values?.[0]).toMatchObject({
+			displayName: 'Add a JPG, PNG, TIFF, or BMP image to appear with the digital signature',
+			name: 'logoNotice',
+			type: 'notice',
+		});
 		expect(getLogoField('inputType')).toMatchObject({
 			displayName: 'Input Source',
 			options: [
