@@ -295,6 +295,12 @@ must emit a completion item while Aggregate collects only the errors.
   (using error output)** (`onError: "continueErrorOutput"`). Do not use
   **Continue (using regular output)** because it makes failed and successful
   items indistinguishable downstream.
+- When an operation consumes multiple files read from disk, use an
+  **Aggregate** node with **All Item Data** and **Include Binaries** enabled
+  before the pdfRest node. Read the files in a stable order so the aggregated
+  binary fields match the configured input field names (`data`, `data_1`, and
+  so on). Give the entire sequence one logical completion input in the Merge
+  barrier, including its read and aggregate error paths.
 - Connect each pdfRest error output directly to its own **Edit Fields** node.
   Capture the source name before any Merge node, because `$prevNode` identifies
   only the immediately preceding node. Use a JSON Output expression shaped like:
