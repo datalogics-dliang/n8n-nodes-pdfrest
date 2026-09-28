@@ -115,6 +115,11 @@ export const mergeDescription: INodeProperties[] = [
 					pages: '1-last',
 					inputType: 'inputFile',
 				},
+				{
+					resourceId: '',
+					pages: '1-last',
+					inputType: 'inputFile',
+				},
 			],
 		},
 		required: true,

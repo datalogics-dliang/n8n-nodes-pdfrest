@@ -58,7 +58,12 @@ describe('Merge PDFs operation', () => {
 			name: 'mergeInputs',
 			type: 'fixedCollection',
 			typeOptions: { multipleValues: true },
-			default: { input: [{ pages: '1-last' }] },
+			default: {
+				input: [
+					{ resourceId: '', pages: '1-last', inputType: 'inputFile' },
+					{ resourceId: '', pages: '1-last', inputType: 'inputFile' },
+				],
+			},
 			required: true,
 			displayOptions: { show: { operation: ['merge'] } },
 			options: [
