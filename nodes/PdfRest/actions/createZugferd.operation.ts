@@ -177,22 +177,10 @@ export const createZugferdDescription: INodeProperties[] = [
 				type: 'json',
 				default: renderOptionsExample,
 				description:
-				'A JSON object for generated PDF appearance, such as locale, label_language, font, and accent_color_rgb',
+					'A JSON object for generated PDF appearance, such as locale, label_language, font, and accent_color_rgb',
+				hint: 'Render Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/create-zugferd-pdf/POST/zugferd-pdf.body.render_options/" target="_blank">Learn how to build the object</a>',
 				routing: { send: { type: 'body', property: 'render_options' } },
 			},
 		],
-	},
-	{
-		displayName:
-			'Render Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/create-zugferd-pdf/POST/zugferd-pdf.body.render_options/" target="_blank">Learn how to build the object</a>',
-		name: 'renderOptionsNotice',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['createZugferd'],
-				'/options.renderOptions': [{ _cnd: { exists: true } }],
-			},
-		},
 	},
 ];

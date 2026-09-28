@@ -510,6 +510,7 @@ export const convertToPdfDescription: INodeProperties[] = [
 				},
 				description:
 					'Conversion options for document metadata, tagging, page setup, typography, tables, and format-specific behavior',
+				hint: 'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
 				routing: { send: { type: 'body', property: 'structured_text_options' } },
 			},
 			{
@@ -554,19 +555,5 @@ export const convertToPdfDescription: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'web_layout' } },
 			},
 		],
-	},
-	{
-		displayName:
-			'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
-		name: 'structuredTextOptionsNotice',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['convertToPdf'],
-				conversionType: ['csv', 'json', 'markdown', 'plainText', 'xml'],
-				'/options.structuredTextOptions': [{ _cnd: { exists: true } }],
-			},
-		},
 	},
 ];

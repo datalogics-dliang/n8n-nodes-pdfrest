@@ -1,5 +1,4 @@
 import {
-	displayParameter,
 	type IExecuteSingleFunctions,
 	type IHttpRequestOptions,
 } from 'n8n-workflow';
@@ -330,6 +329,7 @@ describe('Convert to PDF operation', () => {
 		expect(getOptionalField('structuredTextOptions')).toMatchObject({
 			displayName: 'Structured Text Options',
 			type: 'json',
+			hint: 'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
 			displayOptions: { show: structuredVisibility },
 			routing: { send: { type: 'body', property: 'structured_text_options' } },
 		});
@@ -341,19 +341,7 @@ describe('Convert to PDF operation', () => {
 			enable_tagging: true,
 		});
 		expect(getOptionalField('structuredTextOptionsNotice')).toBeUndefined();
-		expect(getField('structuredTextOptionsNotice')).toMatchObject({
-			displayName:
-				'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: ['convertToPdf'],
-					conversionType: ['csv', 'json', 'markdown', 'plainText', 'xml'],
-					'/options.structuredTextOptions': [{ _cnd: { exists: true } }],
-				},
-			},
-		});
+		expect(getField('structuredTextOptionsNotice')).toBeUndefined();
 		expect(getOptionalField('imageFileDataFieldNames')).toMatchObject({
 			displayName: 'Image Input File Data Field Name',
 			type: 'string',
@@ -374,21 +362,6 @@ describe('Convert to PDF operation', () => {
 			displayOptions: { show: { '/conversionType': ['markdown'] } },
 			routing: { send: { type: 'body', property: 'image_ids' } },
 		});
-	});
-
-	it('couples the documentation notice to the selected structured-text field', () => {
-		const notice = getField('structuredTextOptionsNotice');
-		const isVisible = (conversionType: string, options: Record<string, unknown>) =>
-			displayParameter(
-				{ operation: 'convertToPdf', conversionType, options },
-				notice!,
-				null,
-				undefined,
-			);
-
-		expect(isVisible('markdown', {})).toBe(false);
-		expect(isVisible('markdown', { structuredTextOptions: '{"title":"Example"}' })).toBe(true);
-		expect(isVisible('html', { structuredTextOptions: '{"title":"Example"}' })).toBe(false);
 	});
 
 	it('changes format-specific optional fields with the selected input format', () => {
