@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { signDescription, signOperation } from '../../../../nodes/PdfRest/actions/sign.operation';
 import { createDeferredMultipartUploadsPreSend } from '../../../../nodes/PdfRest/helpers/multipart';
+import multipartWorkflow from '../../../workflows/test-all-endpoints-multipart-upload.json';
 
 function getField(name: string) {
 	return signDescription.find((field) => field.name === name);
@@ -426,6 +427,17 @@ describe('Sign PDF operation', () => {
 		await expect(
 			output?.routing?.send?.preSend?.[0]?.call(executionContext, invalidOutput),
 		).rejects.toThrow('Output File Name must contain at least one character');
+	});
+
+	it('stores the multipart CI logo using the current grouped parameters', () => {
+		const signingNode = multipartWorkflow.nodes.find((node) => node.name === 'Digitally Sign PDF');
+		const options = signingNode?.parameters.options;
+		expect(options).toEqual({
+			logo: { source: { inputType: 'inputFile', fileDataFieldName: 'data_3' } },
+		});
+		expect(
+			getNodeParameters([getOptionalField('logo')!], options!, false, true, null, undefined),
+		).toEqual({ logo: { source: { fileDataFieldName: 'data_3' } } });
 	});
 
 	it('adds an input-file logo to the final multipart request', async () => {

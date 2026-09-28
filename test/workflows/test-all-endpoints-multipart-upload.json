@@ -2759,8 +2759,12 @@
         "pfxPassphraseFileDataFieldName": "data_2",
         "signatureConfiguration": "{\n  \"type\": \"new\",\n  \"name\": \"esignature\",\n  \"logo_opacity\": \"0.5\",\n  \"location\": {\n    \"bottom_left\": {\n      \"x\": \"0\",\n      \"y\": \"0\"\n    },\n    \"top_right\": {\n      \"x\": \"216\",\n      \"y\": \"72\"\n    },\n    \"page\": \"1\"\n  },\n  \"display\": {\n    \"include_distinguished_name\": \"true\",\n    \"include_datetime\": \"true\",\n    \"contact\": \"My contact information\",\n    \"location\": \"My signing location\",\n    \"name\": \"John Doe\",\n    \"reason\": \"My reason for signing\"\n  }\n}",
         "options": {
-          "logoInputType": "inputFile",
-          "logoFileDataFieldName": "data_3"
+          "logo": {
+            "source": {
+              "inputType": "inputFile",
+              "fileDataFieldName": "data_3"
+            }
+          }
         },
         "requestOptions": {}
       },
