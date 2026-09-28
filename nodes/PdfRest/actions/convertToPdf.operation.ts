@@ -126,6 +126,14 @@ function deleteBodyProperty(body: IHttpRequestOptions['body'], property: string)
 	}
 }
 
+function setBodyProperty(body: IHttpRequestOptions['body'], property: string, value: string): void {
+	if (body instanceof FormData) {
+		body.set(property, value);
+	} else if (body && typeof body === 'object' && !Array.isArray(body) && !Buffer.isBuffer(body)) {
+		(body as IDataObject)[property] = value;
+	}
+}
+
 function validateEnum(
 	context: Pick<IExecuteSingleFunctions, 'getNode'>,
 	body: IHttpRequestOptions['body'],
@@ -205,10 +213,29 @@ function createConvertToPdfPreSend(): PreSendAction {
 			if (!activeProperties.has(property)) deleteBodyProperty(body, property);
 		}
 		if (conversionType === 'postscript' && inputType !== 'url') {
+			const options = this.getNodeParameter('options', {}) as IDataObject;
+			const hasJobOptionsField = Object.prototype.hasOwnProperty.call(options, 'jobOptions');
 			const jobOptionsInputType = this.getNodeParameter(
-				'jobOptionsInputType',
-				'none',
+				hasJobOptionsField ? 'options.jobOptions.source.inputType' : 'jobOptionsInputType',
+				hasJobOptionsField ? 'inputFile' : 'none',
 			) as JobOptionsInputType;
+			if (!hasJobOptionsField && jobOptionsInputType === 'resourceId') {
+				setBodyProperty(
+					body,
+					'job_options_id',
+					this.getNodeParameter('jobOptionsResourceId', '') as string,
+				);
+			} else if (!hasJobOptionsField && jobOptionsInputType === 'inputFile') {
+				setBodyProperty(
+					body,
+					'job_options',
+					this.getNodeParameter('jobOptionsFileDataFieldName', 'data') as string,
+				);
+				await createDeferredMultipartUploadPreSend({
+					binaryDataPropertyNameParameter: 'jobOptionsFileDataFieldName',
+					fileFieldName: 'job_options',
+				}).call(this, requestOptions);
+			}
 			if (jobOptionsInputType === 'none') {
 				deleteBodyProperty(body, 'job_options');
 				deleteBodyProperty(body, 'job_options_id');
@@ -342,23 +369,6 @@ export const convertToPdfDescription: INodeProperties[] = [
 			'Select the input format to choose which format-specific optional fields are available. Leave this field set to Not Specified for images, email, or when you do not need those fields.',
 		routing: { send: { preSend: [createConvertToPdfPreSend()] } },
 	},
-	...createSecondaryFileInputSourceFields({
-		allowNone: true,
-		displayName: 'Job Options Input Source',
-		description:
-			'Choose a .joboptions settings file or its pdfRest resource ID, or None to use default settings',
-		operation: 'convertToPdf',
-		show: { conversionType: ['postscript'], inputType: ['inputFile', 'resourceId'] },
-		inputTypeName: 'jobOptionsInputType',
-		fileFieldName: 'job_options',
-		fileInputDataFieldName: 'jobOptionsFileDataFieldName',
-		fileInputDataFieldDisplayName: 'Job Options Input File Data Field Name',
-		fileInputDescription: 'The input field containing the .joboptions settings file',
-		resourceIdName: 'jobOptionsResourceId',
-		resourceIdDisplayName: 'Job Options Resource ID',
-		resourceIdBodyProperty: 'job_options_id',
-		resourceIdDescription: 'The resource ID of a previously uploaded .joboptions settings file',
-	}),
 	{
 		displayName: 'Optional Fields',
 		name: 'options',
@@ -433,6 +443,41 @@ export const convertToPdfDescription: INodeProperties[] = [
 				description:
 					'The ordered resource IDs for images referenced by image ID indexes in Structured Text Options',
 				routing: { send: { type: 'body', property: 'image_ids' } },
+			},
+			{
+				displayName: 'Job Options',
+				name: 'jobOptions',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: false },
+				default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
+				description:
+					'Choose a .joboptions input file or resource ID to use custom PostScript conversion settings',
+				displayOptions: {
+					show: { '/conversionType': ['postscript'], '/inputType': ['inputFile', 'resourceId'] },
+				},
+				options: [
+					{
+						displayName: 'Job Options',
+						name: 'source',
+						values: [
+							...createSecondaryFileInputSourceFields({
+								operation: 'convertToPdf',
+								nestedPath: 'options.jobOptions.source',
+								displayName: 'Input Source',
+								inputTypeName: 'inputType',
+								fileFieldName: 'job_options',
+								fileInputDataFieldName: 'fileDataFieldName',
+								fileInputDataFieldDisplayName: 'Job Options Input File Data Field Name',
+								fileInputDescription: 'The input field containing the .joboptions settings file',
+								resourceIdName: 'resourceId',
+								resourceIdDisplayName: 'Job Options Resource ID',
+								resourceIdBodyProperty: 'job_options_id',
+								resourceIdDescription:
+									'The resource ID of a previously uploaded .joboptions settings file',
+							}),
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Locale',

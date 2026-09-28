@@ -10,6 +10,7 @@ type UrlRequestFormat = 'json' | 'multipart';
 type InputSource = 'file' | 'resourceId' | 'url';
 
 interface FileInputOptions {
+	binaryDataPropertyNameParameter?: string;
 	fieldName?: string;
 	inputDataFieldName?: string;
 	inputDataFieldDisplayName?: string;
@@ -44,6 +45,7 @@ interface SecondaryFileInputSourceOptions {
 	fileInputDataFieldDisplayName: string;
 	fileInputDescription?: string;
 	inputTypeName: string;
+	nestedPath?: string;
 	operation: string;
 	resourceIdBodyProperty: string;
 	resourceIdDescription: string;
@@ -98,7 +100,8 @@ export function createInputFileFields({
 					(file.deferUpload
 						? createDeferredMultipartUploadPreSend
 						: createMultipartUploadPreSend)({
-						binaryDataPropertyNameParameter: inputDataFieldName,
+						binaryDataPropertyNameParameter:
+							file.binaryDataPropertyNameParameter ?? inputDataFieldName,
 						fileFieldName,
 					}),
 				],
@@ -227,6 +230,7 @@ export function createSecondaryFileInputSourceFields({
 	fileInputDataFieldDisplayName,
 	fileInputDescription,
 	inputTypeName,
+	nestedPath,
 	operation,
 	resourceIdBodyProperty,
 	resourceIdDescription,
@@ -250,7 +254,7 @@ export function createSecondaryFileInputSourceFields({
 			...(allowNone ? { default: 'none' } : {}),
 			description:
 				description ?? 'Choose a file from this workflow or one already stored by pdfRest',
-			displayOptions: { show: baseShow },
+			...(nestedPath ? {} : { displayOptions: { show: baseShow } }),
 		},
 		{
 			displayName: resourceIdDisplayName,
@@ -258,7 +262,11 @@ export function createSecondaryFileInputSourceFields({
 			type: 'string',
 			default: '',
 			required: true,
-			displayOptions: { show: { ...baseShow, [inputTypeName]: ['resourceId'] } },
+			displayOptions: {
+				show: nestedPath
+					? { [inputTypeName]: ['resourceId'] }
+					: { ...baseShow, [inputTypeName]: ['resourceId'] },
+			},
 			description: resourceIdDescription,
 			routing: { send: { type: 'body', property: resourceIdBodyProperty } },
 		},
@@ -269,13 +277,20 @@ export function createSecondaryFileInputSourceFields({
 				fieldName: fileFieldName,
 				inputDataFieldName: fileInputDataFieldName,
 				inputDataFieldDisplayName: fileInputDataFieldDisplayName,
+				...(nestedPath
+					? { binaryDataPropertyNameParameter: `${nestedPath}.${fileInputDataFieldName}` }
+					: {}),
 				...(fileInputDescription ? { description: fileInputDescription } : {}),
 				deferUpload: true,
 			},
 		}).map((field) => ({
 			...field,
 			...(field.type === 'notice' ? { name: `${inputTypeName}Notice` } : {}),
-			displayOptions: { show: { ...baseShow, [inputTypeName]: ['inputFile'] } },
+			displayOptions: {
+				show: nestedPath
+					? { [inputTypeName]: ['inputFile'] }
+					: { ...baseShow, [inputTypeName]: ['inputFile'] },
+			},
 		})),
 	];
 }
