@@ -117,20 +117,10 @@ it.
 
 The account should have enough quota for both all-endpoint workflows on every
 same-repository pull request, `develop` push, manual run, and release.
-Both workflows exercise PDF to PostScript conversion. The JSON upload workflow
-passes an uploaded PDF's resource ID to the conversion node; the multipart
-workflow passes a PDF read from disk directly to that node. The multipart
-workflow creates a ZUGFeRD PDF from the committed invoice XML fixture and
-validates the generated PDF. The validation branch fails if the response status
-is anything other than `VALID`, even when the API returns HTTP 200. The JSON
-upload workflow uses no Read/Write Files from Disk nodes.
-The multipart workflow also reads the numbered PostScript and job options
-fixtures, aggregates their binary data into one item, and converts the
-PostScript file with the job options file. The file names determine the binary
-field order: `data` is the PostScript file and `data_1` is the job options file.
-Keep a multi-file read and its Aggregate node in the same logical branch of the
-final Merge barrier, with read, aggregate, and conversion errors routed to that
-branch's completion input.
+The JSON upload workflow passes uploaded resource IDs to pdfRest nodes and
+uses no Read/Write Files from Disk nodes. The multipart workflow reads fixtures
+from disk and passes their files directly to pdfRest nodes, aggregating them
+first when an operation requires multiple files.
 
 Monitor usage in pdfRest and rotate the key through the GitHub environment
 rather than changing repository files.
