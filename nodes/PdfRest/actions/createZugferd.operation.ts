@@ -86,7 +86,7 @@ function createZugferdRequestPreSend(): PreSendAction {
 				pdfSource === 'inputFile' ||
 				logoSource === 'inputFile';
 			requestBody.render_options = hasFileInput
-				? (new Blob([JSON.stringify(parsed)], { type: 'application/json' }) as unknown as IDataObject)
+				? JSON.stringify(parsed)
 				: (parsed as IDataObject);
 		}
 		return requestOptions;

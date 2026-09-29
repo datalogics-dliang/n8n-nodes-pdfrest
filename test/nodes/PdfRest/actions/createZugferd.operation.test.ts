@@ -180,9 +180,28 @@ describe('Create ZUGFeRD PDF operation', () => {
 		expect(body.get('pdf_file')).toBeInstanceOf(Blob);
 		expect(body.get('logo_file')).toBeInstanceOf(Blob);
 		const renderOptions = body.get('render_options');
-		expect(renderOptions).toBeInstanceOf(Blob);
-		expect((renderOptions as Blob).type).toBe('application/json');
-		expect(await (renderOptions as Blob).text()).toBe('{"locale":"de-DE"}');
+		expect(renderOptions).toBe('{"locale":"de-DE"}');
+		const multipartRequest = new Request('https://example.invalid', {
+			method: 'POST',
+			body,
+		});
+		const multipartBody = await multipartRequest.text();
+		expect(multipartBody).toContain('name="render_options"\r\n');
+		expect(multipartBody).not.toContain('name="render_options"; filename=');
 		expect(request.headers).not.toHaveProperty('Content-Type');
+	});
+
+	it('sends empty render options as a regular multipart field', async () => {
+		const execution = context('none', 'none', 'inputFile');
+		const request: IHttpRequestOptions = {
+			url: '/zugferd-pdf',
+			body: { file: 'xml', render_options: '{}' },
+		};
+		await prepare?.call(execution, request);
+		await field('inputFileDataFieldName')?.routing?.send?.preSend?.[0]?.call(execution, request);
+		await createDeferredMultipartUploadsPreSend().call(execution, request);
+		const body = request.body as FormData;
+		expect(body.get('render_options')).toBe('{}');
+		expect(body.get('file')).toBeInstanceOf(Blob);
 	});
 });
