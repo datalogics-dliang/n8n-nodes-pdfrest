@@ -241,7 +241,7 @@ function createTextObjectsPreSend(): PreSendAction {
 			textObjects.forEach((textObject, index) => validateTextObject(textObject, index, tagEnabled));
 			requestOptions.body = {
 				...(body as IDataObject),
-				text_objects: textObjects,
+				text_objects: JSON.stringify(textObjects),
 			};
 			return requestOptions;
 		} catch (error) {

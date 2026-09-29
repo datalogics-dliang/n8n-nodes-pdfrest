@@ -123,7 +123,9 @@ describe('Add Text to PDF operation', () => {
 				body: { id: 'pdf-id', text_objects: input },
 			};
 			await expect(preSend?.call(context(), request)).resolves.toBe(request);
-			expect((request.body as Record<string, unknown>).text_objects).toEqual([rgbTextObject]);
+			expect((request.body as Record<string, unknown>).text_objects).toBe(
+				JSON.stringify([rgbTextObject]),
+			);
 		}
 	});
 
@@ -149,7 +151,7 @@ describe('Add Text to PDF operation', () => {
 			body: { text_objects: [textObject] },
 		};
 		await getField('textObjects')?.routing?.send?.preSend?.[0]?.call(context(true), request);
-		expect((request.body as Record<string, unknown>).text_objects).toEqual([textObject]);
+		expect((request.body as Record<string, unknown>).text_objects).toBe(JSON.stringify([textObject]));
 	});
 
 	it('accepts every PDF content structure type', async () => {
