@@ -2904,7 +2904,8 @@
       "parameters": {
         "operation": "createZugferd",
         "options": {
-          "includeFileInfo": false
+          "includeFileInfo": false,
+          "renderOptions": "{\n  \"logo_corner\": \"top-right\",\n  \"font\": \"Arial\",\n  \"bold_font\": \"Arial Bold\",\n  \"locale\": \"de-DE\",\n  \"label_language\": \"en\",\n  \"currency_display\": \"symbol\",\n  \"date_format\": \"dd.MM.yyyy\",\n  \"decimal_precision\": 2,\n  \"text_color_rgb\": [\n    26,\n    31,\n    41\n  ],\n  \"muted_text_color_cmyk\": [\n    10,\n    5,\n    0,\n    55\n  ],\n  \"accent_color_rgb\": [\n    20,\n    64,\n    115\n  ],\n  \"border_color_cmyk\": [\n    12,\n    7,\n    0,\n    20\n  ],\n  \"table_header_color_rgb\": [\n    20,\n    64,\n    115\n  ],\n  \"table_alternate_color_cmyk\": [\n    4,\n    2,\n    0,\n    2\n  ],\n  \"footer_message\": \"Thank you for your business.\"\n}"
         },
         "requestOptions": {}
       },

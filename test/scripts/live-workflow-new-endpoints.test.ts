@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createZugferdDescription } from '../../nodes/PdfRest/actions/createZugferd.operation';
 
 import jsonWorkflow from '../workflows/test-all-endpoints-json-upload.json';
 import multipartWorkflow from '../workflows/test-all-endpoints-multipart-upload.json';
@@ -116,6 +117,12 @@ describe('multipart live workflow', () => {
 		const validation = node(workflow, 'Validate Created ZUGFeRD PDF');
 		expect(creation.parameters.operation).toBe('createZugferd');
 		expect(creation.parameters.inputType).toBeUndefined();
+		const defaultRenderOptions = createZugferdDescription
+			.find((field) => field.name === 'options')
+			?.options?.find((field) => field.name === 'renderOptions')?.default;
+		expect((creation.parameters.options as Record<string, unknown>).renderOptions).toBe(
+			defaultRenderOptions,
+		);
 		expect(validation.parameters).toMatchObject({
 			operation: 'validateZugferd',
 			inputType: 'resourceId',
