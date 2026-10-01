@@ -94,9 +94,9 @@ function createZugferdRequestPreSend(): PreSendAction {
 }
 
 export const createZugferdOperation: INodePropertyOptions = createResourceIdOperation({
-	name: 'Create ZUGFeRD PDF',
+	name: 'Create ZUGFeRD / Factur-X PDF Invoice',
 	value: 'createZugferd',
-	action: 'Modify · Create ZUGFeRD PDF',
+	action: 'E-Invoicing · Create ZUGFeRD / Factur-X PDF Invoice',
 	description: 'Create a ZUGFeRD or Factur-X invoice PDF from invoice XML',
 	path: '/zugferd-pdf',
 });

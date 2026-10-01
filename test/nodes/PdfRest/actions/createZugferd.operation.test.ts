@@ -41,6 +41,8 @@ function context(
 describe('Create ZUGFeRD PDF operation', () => {
 	it('registers the OpenAPI route and one XML input source selector', () => {
 		expect(createZugferdOperation).toMatchObject({
+			name: 'Create ZUGFeRD / Factur-X PDF Invoice',
+			action: 'E-Invoicing · Create ZUGFeRD / Factur-X PDF Invoice',
 			value: 'createZugferd',
 			routing: { request: { method: 'POST', url: '/zugferd-pdf' } },
 		});

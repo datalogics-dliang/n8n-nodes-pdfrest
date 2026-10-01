@@ -10,6 +10,8 @@ import { createDeferredMultipartUploadsPreSend } from '../../../../nodes/PdfRest
 describe('Validate ZUGFeRD PDF operation', () => {
 	it('uses the OpenAPI validation route and accepts file or resource ID input', () => {
 		expect(validateZugferdOperation).toMatchObject({
+			name: 'Validate ZUGFeRD / Factur-X PDF Invoice',
+			action: 'E-Invoicing · Validate ZUGFeRD / Factur-X PDF Invoice',
 			value: 'validateZugferd',
 			routing: { request: { method: 'POST', url: '/validated-zugferd' } },
 		});

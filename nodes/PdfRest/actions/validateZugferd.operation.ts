@@ -4,9 +4,9 @@ import { createInputSourceFields } from '../helpers/inputSource';
 import { createResourceIdOperation } from '../helpers/resourceId';
 
 export const validateZugferdOperation: INodePropertyOptions = createResourceIdOperation({
-	name: 'Validate ZUGFeRD PDF',
+	name: 'Validate ZUGFeRD / Factur-X PDF Invoice',
 	value: 'validateZugferd',
-	action: 'Analyze · Validate ZUGFeRD PDF',
+	action: 'E-Invoicing · Validate ZUGFeRD / Factur-X PDF Invoice',
 	description: 'Check a ZUGFeRD or Factur-X invoice PDF and return validation findings',
 	path: '/validated-zugferd',
 });
