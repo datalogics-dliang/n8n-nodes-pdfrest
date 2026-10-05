@@ -104,4 +104,26 @@ describe('createInputSourceFields', () => {
 			routing: { send: { property: 'image_file' } },
 		});
 	});
+
+	it('routes grouped secondary fields using their nested source selector', () => {
+		const fields = createSecondaryFileInputSourceFields({
+			operation: 'sign',
+			inputTypeName: 'inputType',
+			nestedPath: 'options.logo.source',
+			fileFieldName: 'logo_file',
+			fileInputDataFieldName: 'fileDataFieldName',
+			fileInputDataFieldDisplayName: 'Logo Input File Data Field Name',
+			resourceIdName: 'resourceId',
+			resourceIdDisplayName: 'Logo Resource ID',
+			resourceIdBodyProperty: 'logo_id',
+			resourceIdDescription: 'An existing logo resource',
+		});
+
+		expect(fields[1].displayOptions?.show).toEqual({
+			'options.logo.source.inputType': ['resourceId'],
+		});
+		expect(fields[2].displayOptions?.show).toEqual({
+			'options.logo.source.inputType': ['inputFile'],
+		});
+	});
 });

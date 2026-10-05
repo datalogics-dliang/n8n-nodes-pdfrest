@@ -239,6 +239,7 @@ export function createSecondaryFileInputSourceFields({
 	show = {},
 }: SecondaryFileInputSourceOptions): INodeProperties[] {
 	const baseShow = { operation: [operation], ...show };
+	const routingInputTypeName = nestedPath ? `${nestedPath}.${inputTypeName}` : inputTypeName;
 	return [
 		{
 			displayName,
@@ -264,7 +265,7 @@ export function createSecondaryFileInputSourceFields({
 			required: true,
 			displayOptions: {
 				show: nestedPath
-					? { [inputTypeName]: ['resourceId'] }
+					? { [routingInputTypeName]: ['resourceId'] }
 					: { ...baseShow, [inputTypeName]: ['resourceId'] },
 			},
 			description: resourceIdDescription,
@@ -288,7 +289,7 @@ export function createSecondaryFileInputSourceFields({
 			...(field.type === 'notice' ? { name: `${inputTypeName}Notice` } : {}),
 			displayOptions: {
 				show: nestedPath
-					? { [inputTypeName]: ['inputFile'] }
+					? { [routingInputTypeName]: ['inputFile'] }
 					: { ...baseShow, [inputTypeName]: ['inputFile'] },
 			},
 		})),
