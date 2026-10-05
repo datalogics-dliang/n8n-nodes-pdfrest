@@ -373,26 +373,27 @@ describe('Sign PDF operation', () => {
 			routing: { send: { type: 'body', property: 'logo_id' } },
 		});
 		expect(getLogoField('resourceId')?.displayOptions).toEqual({
-			show: { inputType: ['resourceId'] },
+			show: { 'options.logo.source.inputType': ['resourceId'] },
 		});
 		expect(getLogoField('fileDataFieldName')).toMatchObject({
 			displayName: 'Logo Input File Data Field Name',
 			required: true,
-			displayOptions: { show: { inputType: ['inputFile'] } },
+			displayOptions: { show: { 'options.logo.source.inputType': ['inputFile'] } },
 			routing: { send: { type: 'body', property: 'logo_file' } },
 		});
 		expect(getLogoField('fileDataFieldName')?.routing?.send?.preSend).toHaveLength(1);
+		const logoInput = (inputType: string) => ({ options: { logo: { source: { inputType } } } });
 		expect(
-			displayParameter({ inputType: 'inputFile' }, getLogoField('fileDataFieldName')!, null, undefined),
+			displayParameter(logoInput('inputFile'), getLogoField('fileDataFieldName')!, null, undefined),
 		).toBe(true);
 		expect(
-			displayParameter({ inputType: 'inputFile' }, getLogoField('resourceId')!, null, undefined),
+			displayParameter(logoInput('inputFile'), getLogoField('resourceId')!, null, undefined),
 		).toBe(false);
 		expect(
-			displayParameter({ inputType: 'resourceId' }, getLogoField('fileDataFieldName')!, null, undefined),
+			displayParameter(logoInput('resourceId'), getLogoField('fileDataFieldName')!, null, undefined),
 		).toBe(false);
 		expect(
-			displayParameter({ inputType: 'resourceId' }, getLogoField('resourceId')!, null, undefined),
+			displayParameter(logoInput('resourceId'), getLogoField('resourceId')!, null, undefined),
 		).toBe(true);
 		const logo = getOptionalField('logo')!;
 		const logoParameters = {

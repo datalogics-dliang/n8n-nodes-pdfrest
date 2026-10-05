@@ -199,20 +199,23 @@ describe('Convert to PDF operation', () => {
 			displayName: 'Job Options Input File Data Field Name',
 			default: 'data',
 			required: true,
-			displayOptions: { show: { inputType: ['inputFile'] } },
+			displayOptions: { show: { 'options.jobOptions.source.inputType': ['inputFile'] } },
 			routing: { send: { type: 'body', property: 'job_options' } },
 		});
 		expect(getJobOptionsField('resourceId')).toMatchObject({
 			displayName: 'Job Options Resource ID',
 			default: '',
 			required: true,
-			displayOptions: { show: { inputType: ['resourceId'] } },
+			displayOptions: { show: { 'options.jobOptions.source.inputType': ['resourceId'] } },
 			routing: { send: { type: 'body', property: 'job_options_id' } },
 		});
-		expect(displayParameter({ inputType: 'inputFile' }, getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(true);
-		expect(displayParameter({ inputType: 'inputFile' }, getJobOptionsField('resourceId')!, null, undefined)).toBe(false);
-		expect(displayParameter({ inputType: 'resourceId' }, getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(false);
-		expect(displayParameter({ inputType: 'resourceId' }, getJobOptionsField('resourceId')!, null, undefined)).toBe(true);
+		const jobOptionsInput = (inputType: string) => ({
+			options: { jobOptions: { source: { inputType } } },
+		});
+		expect(displayParameter(jobOptionsInput('inputFile'), getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(true);
+		expect(displayParameter(jobOptionsInput('inputFile'), getJobOptionsField('resourceId')!, null, undefined)).toBe(false);
+		expect(displayParameter(jobOptionsInput('resourceId'), getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(false);
+		expect(displayParameter(jobOptionsInput('resourceId'), getJobOptionsField('resourceId')!, null, undefined)).toBe(true);
 		const jobOptions = getOptionalField('jobOptions');
 		expect(
 			displayParameter(
