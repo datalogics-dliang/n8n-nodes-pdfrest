@@ -239,7 +239,7 @@ export function createSecondaryFileInputSourceFields({
 	show = {},
 }: SecondaryFileInputSourceOptions): INodeProperties[] {
 	const baseShow = { operation: [operation], ...show };
-	const routingInputTypeName = nestedPath ? `${nestedPath}.${inputTypeName}` : inputTypeName;
+	const routingInputTypeName = nestedPath ? `/${nestedPath}.${inputTypeName}` : inputTypeName;
 	return [
 		{
 			displayName,
@@ -289,7 +289,7 @@ export function createSecondaryFileInputSourceFields({
 			...(field.type === 'notice' ? { name: `${inputTypeName}Notice` } : {}),
 			displayOptions: {
 				show: nestedPath
-					? { [routingInputTypeName]: ['inputFile'] }
+					? { [routingInputTypeName]: allowNone ? ['inputFile'] : ['inputFile', undefined] }
 					: { ...baseShow, [inputTypeName]: ['inputFile'] },
 			},
 		})),

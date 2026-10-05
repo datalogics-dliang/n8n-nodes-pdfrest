@@ -1,3 +1,4 @@
+import { displayParameter, displayParameterPath } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 import {
 	createInputSourceFields,
@@ -120,10 +121,32 @@ describe('createInputSourceFields', () => {
 		});
 
 		expect(fields[1].displayOptions?.show).toEqual({
-			'options.logo.source.inputType': ['resourceId'],
+			'/options.logo.source.inputType': ['resourceId'],
 		});
 		expect(fields[2].displayOptions?.show).toEqual({
-			'options.logo.source.inputType': ['inputFile'],
+			'/options.logo.source.inputType': ['inputFile', undefined],
 		});
+		const fileField = fields[2];
+		const resourceIdField = fields[1];
+		for (const [primaryInputType, logoInputType, expectedFile] of [
+			['resourceId', 'inputFile', true],
+			['inputFile', 'resourceId', false],
+		] as const) {
+			const parameters = {
+				inputType: primaryInputType,
+				options: { logo: { source: { inputType: logoInputType } } },
+			};
+			expect(displayParameter(parameters, fileField, null, undefined)).toBe(expectedFile);
+			expect(displayParameter(parameters, resourceIdField, null, undefined)).toBe(!expectedFile);
+			expect(
+				displayParameterPath(parameters, fileField, 'options.logo.source', null, undefined),
+			).toBe(expectedFile);
+			expect(
+				displayParameterPath(parameters, resourceIdField, 'options.logo.source', null, undefined),
+			).toBe(!expectedFile);
+		}
+		const defaultInput = { options: { logo: { source: { fileDataFieldName: 'data_3' } } } };
+		expect(displayParameter(defaultInput, fileField, null, undefined)).toBe(true);
+		expect(displayParameter(defaultInput, resourceIdField, null, undefined)).toBe(false);
 	});
 });

@@ -373,16 +373,19 @@ describe('Sign PDF operation', () => {
 			routing: { send: { type: 'body', property: 'logo_id' } },
 		});
 		expect(getLogoField('resourceId')?.displayOptions).toEqual({
-			show: { 'options.logo.source.inputType': ['resourceId'] },
+			show: { '/options.logo.source.inputType': ['resourceId'] },
 		});
 		expect(getLogoField('fileDataFieldName')).toMatchObject({
 			displayName: 'Logo Input File Data Field Name',
 			required: true,
-			displayOptions: { show: { 'options.logo.source.inputType': ['inputFile'] } },
+			displayOptions: { show: { '/options.logo.source.inputType': ['inputFile', undefined] } },
 			routing: { send: { type: 'body', property: 'logo_file' } },
 		});
 		expect(getLogoField('fileDataFieldName')?.routing?.send?.preSend).toHaveLength(1);
-		const logoInput = (inputType: string) => ({ options: { logo: { source: { inputType } } } });
+		const logoInput = (inputType: string) => ({
+			inputType: inputType === 'inputFile' ? 'resourceId' : 'inputFile',
+			options: { logo: { source: { inputType } } },
+		});
 		expect(
 			displayParameter(logoInput('inputFile'), getLogoField('fileDataFieldName')!, null, undefined),
 		).toBe(true);
@@ -399,7 +402,9 @@ describe('Sign PDF operation', () => {
 		const logoParameters = {
 			logo: { source: { inputType: 'resourceId', resourceId: 'logo-id' } },
 		};
-		expect(getNodeParameters([logo], logoParameters, false, true, null, undefined)).toEqual(
+		expect(getNodeParameters([logo], logoParameters, false, true, null, undefined, {
+			nodeValuesRoot: { options: logoParameters },
+		})).toEqual(
 			logoParameters,
 		);
 
@@ -437,7 +442,9 @@ describe('Sign PDF operation', () => {
 			logo: { source: { inputType: 'inputFile', fileDataFieldName: 'data_3' } },
 		});
 		expect(
-			getNodeParameters([getOptionalField('logo')!], options!, false, true, null, undefined),
+			getNodeParameters([getOptionalField('logo')!], options!, false, true, null, undefined, {
+				nodeValuesRoot: { options },
+			}),
 		).toEqual({ logo: { source: { fileDataFieldName: 'data_3' } } });
 	});
 
