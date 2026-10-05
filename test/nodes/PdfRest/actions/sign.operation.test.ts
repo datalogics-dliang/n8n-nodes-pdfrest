@@ -340,7 +340,7 @@ describe('Sign PDF operation', () => {
 			default: {},
 			displayOptions: { show: { operation: ['sign'] } },
 		});
-		expect(optionalFields?.options?.map(({ name }) => name)).toEqual([
+		expect(optionalFields?.options?.filter(({ type }) => type !== 'hidden').map(({ name }) => name)).toEqual([
 			'includeFileInfo',
 			'logo',
 			'output',
@@ -529,6 +529,44 @@ describe('Sign PDF operation', () => {
 		await preSend?.call(legacyFileContext, legacyFileRequest);
 		await createDeferredMultipartUploadsPreSend().call(legacyFileContext, legacyFileRequest);
 		expect((legacyFileRequest.body as FormData).get('logo_file')).toBeInstanceOf(Blob);
+	});
+
+	it('retains legacy logo fields when n8n normalizes an imported workflow', async () => {
+		const optionsField = getField('options')!;
+		const legacyOptionsField = {
+			...optionsField,
+			displayOptions: undefined,
+			options: optionsField.options?.filter(({ type }) => type === 'hidden'),
+		};
+		const preSend = getField('credentialType')?.routing?.send?.preSend?.[1];
+		for (const [savedOptions, expectedBody] of [
+			[
+				{ logoInputType: 'resourceId', logoId: 'saved-logo-id' },
+				{ logo_id: 'saved-logo-id' },
+			],
+			[
+				{ logoInputType: 'inputFile', logoFileDataFieldName: 'saved-logo' },
+				{ logo_file: 'saved-logo' },
+			],
+		] as const) {
+			const normalized = getNodeParameters(
+				[legacyOptionsField],
+				{ options: savedOptions },
+				false,
+				true,
+				null,
+				undefined,
+			);
+			expect(normalized).toEqual({ options: savedOptions });
+			const context = {
+				...executionContext,
+				getNodeParameter: (name: string, fallback: unknown) =>
+					name === 'options' ? normalized?.options : fallback,
+			} as IExecuteSingleFunctions;
+			const request: IHttpRequestOptions = { url: '/signed-pdf', body: {} };
+			await preSend?.call(context, request);
+			expect(request.body).toEqual(expectedBody);
+		}
 	});
 
 	it('routes both headers and omits Response-Type by default', async () => {

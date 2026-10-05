@@ -405,6 +405,24 @@ export const signDescription: INodeProperties[] = [
 		options: [
 			createIncludeFileInfoField('sign'),
 			{
+				displayName: 'Legacy Logo Input Source',
+				name: 'logoInputType',
+				type: 'hidden',
+				default: '',
+			},
+			{
+				displayName: 'Legacy Logo Resource ID',
+				name: 'logoId',
+				type: 'hidden',
+				default: '',
+			},
+			{
+				displayName: 'Legacy Logo Input File Data Field Name',
+				name: 'logoFileDataFieldName',
+				type: 'hidden',
+				default: '',
+			},
+			{
 				displayName: 'Logo',
 				name: 'logo',
 				type: 'fixedCollection',
