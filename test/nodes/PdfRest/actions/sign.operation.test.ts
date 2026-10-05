@@ -440,6 +440,37 @@ describe('Sign PDF operation', () => {
 		).toEqual({ logo: { source: { fileDataFieldName: 'data_3' } } });
 	});
 
+	it('runs the legacy logo branch through the multipart CI completion barrier', () => {
+		const legacyName = 'Digitally Sign PDF (Legacy)';
+		const resultName = 'Record Digitally Sign PDF (Legacy) Result';
+		const legacyNode = multipartWorkflow.nodes.find((node) => node.name === legacyName);
+		expect(legacyNode).toMatchObject({
+			onError: 'continueErrorOutput',
+			notesInFlow: true,
+			parameters: {
+				operation: 'sign',
+				options: { logoInputType: 'inputFile', logoFileDataFieldName: 'data_3' },
+			},
+		});
+		expect(legacyNode?.notes).toContain('original flat Logo fields');
+		expect(multipartWorkflow.connections['Aggregate Files for Signed PDF'].main[0]).toContainEqual({
+			node: legacyName,
+			type: 'main',
+			index: 0,
+		});
+		for (const output of multipartWorkflow.connections[legacyName].main) {
+			expect(output).toContainEqual({ node: resultName, type: 'main', index: 0 });
+		}
+		expect(multipartWorkflow.connections[resultName].main[0]).toContainEqual({
+			node: 'Merge Complex Results 2',
+			type: 'main',
+			index: 4,
+		});
+		expect(
+			multipartWorkflow.nodes.find((node) => node.name === 'Merge Complex Results 2')?.parameters,
+		).toMatchObject({ numberInputs: 5 });
+	});
+
 	it('adds an input-file logo to the final multipart request', async () => {
 		const logoPreSend = getField('credentialType')?.routing?.send?.preSend?.[1];
 		expect(logoPreSend).toBeDefined();

@@ -2596,7 +2596,7 @@
     },
     {
       "parameters": {
-        "numberInputs": 4
+        "numberInputs": 5
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
@@ -2798,6 +2798,56 @@
       ],
       "id": "1c0f6511-fcab-4384-aa60-725798e712bf",
       "name": "Record Digitally Sign PDF Result"
+    },
+    {
+      "parameters": {
+        "operation": "sign",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "credentialType": "pfx",
+        "pfxCredentialInputType": "inputFile",
+        "pfxCredentialFileDataFieldName": "data_1",
+        "pfxPassphraseInputType": "inputFile",
+        "pfxPassphraseFileDataFieldName": "data_2",
+        "signatureConfiguration": "{\n  \"type\": \"new\",\n  \"name\": \"esignature\",\n  \"logo_opacity\": \"0.5\",\n  \"location\": {\n    \"bottom_left\": {\n      \"x\": \"0\",\n      \"y\": \"0\"\n    },\n    \"top_right\": {\n      \"x\": \"216\",\n      \"y\": \"72\"\n    },\n    \"page\": \"1\"\n  },\n  \"display\": {\n    \"include_distinguished_name\": \"true\",\n    \"include_datetime\": \"true\",\n    \"contact\": \"My contact information\",\n    \"location\": \"My signing location\",\n    \"name\": \"John Doe\",\n    \"reason\": \"My reason for signing\"\n  }\n}",
+        "options": {
+          "logoInputType": "inputFile",
+          "logoFileDataFieldName": "data_3"
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        12192
+      ],
+      "id": "38ab2789-4a5c-4b18-a582-5b42ae92b3b0",
+      "name": "Digitally Sign PDF (Legacy)",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Checks that workflows saved with the original flat Logo fields still include the signature logo.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -448,
+        12192
+      ],
+      "id": "46d6603e-7fdb-4081-ae4a-f736607902e9",
+      "name": "Record Digitally Sign PDF (Legacy) Result"
     },
     {
       "parameters": {
@@ -5270,6 +5320,11 @@
             "node": "Digitally Sign PDF",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Digitally Sign PDF (Legacy)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -5531,6 +5586,35 @@
             "node": "Merge Single-Input Results 4",
             "type": "main",
             "index": 5
+          }
+        ]
+      ]
+    },
+    "Digitally Sign PDF (Legacy)": {
+      "main": [
+        [
+          {
+            "node": "Record Digitally Sign PDF (Legacy) Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Digitally Sign PDF (Legacy) Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Digitally Sign PDF (Legacy) Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Complex Results 2",
+            "type": "main",
+            "index": 4
           }
         ]
       ]
