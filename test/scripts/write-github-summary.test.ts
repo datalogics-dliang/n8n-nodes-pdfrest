@@ -121,6 +121,8 @@ describe('write GitHub live-test summary', () => {
 			itemIndex: 0,
 			httpStatus: 400,
 			classification: 'client-request',
+			errorCode: 'HTTP_400',
+			message: 'The API rejected this request',
 			inputs: [
 				{
 					location: 'body',
@@ -136,8 +138,35 @@ describe('write GitHub live-test summary', () => {
 		expect(summary).toContain('Item index:** 0');
 		expect(summary).toContain('HTTP status:** 400');
 		expect(summary).toContain('Classification:** client-request');
+		expect(summary).toContain('Error code:** HTTP\\_400');
+		expect(summary).toContain('Message:** The API rejected this request');
 		expect(summary).toContain('body / file / inputFile: application/pdf, 2674');
 		for (const canary of canaries) expect(summary).not.toContain(canary);
+	});
+
+	it('uses fixed messages for known local errors and hides unknown text', () => {
+		const missingBinary = sanitizeError({
+			node: 'Convert PDF to PostScript',
+			details: {
+				name: 'NodeOperationError',
+				message: `This operation expects a binary file, but none was found: ${canaries[7]}`,
+			},
+		});
+		expect(missingBinary).toMatchObject({
+			errorCode: 'MISSING_BINARY_INPUT',
+			message: 'The selected input file field is missing from this item',
+		});
+		const unknown = sanitizeError({
+			node: 'Convert PDF to PostScript',
+			details: { name: 'NodeOperationError', message: canaries.join(' ') },
+		});
+		expect(unknown).toMatchObject({
+			errorCode: 'NODE_OPERATION',
+			message: 'The node could not process this item',
+		});
+		for (const canary of canaries) {
+			expect(JSON.stringify([missingBinary, unknown])).not.toContain(canary);
+		}
 	});
 
 	it('keeps canaries out of the job summary and artifact payload', () => {

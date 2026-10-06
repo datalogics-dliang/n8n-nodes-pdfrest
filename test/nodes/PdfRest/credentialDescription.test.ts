@@ -75,7 +75,7 @@ describe('pdfRest credential description', () => {
 		);
 		expect(cloudRequest).toMatchObject({
 			url: 'https://api.pdfrest.com/compress',
-			headers: { Accept: 'application/json', 'Api-Key': 'cloud-key' },
+			headers: { Accept: 'application/json', 'Api-Key': 'cloud-key', wsn: 'n8n' },
 		});
 
 		const customRequest = await credential.authenticate(
@@ -86,12 +86,12 @@ describe('pdfRest credential description', () => {
 			},
 			{
 				url: 'http://pdfrest.internal:8080///compress',
-				headers: { Accept: 'application/json', 'Api-Key': 'stale-key' },
+				headers: { Accept: 'application/json', 'Api-Key': 'stale-key', WSN: 'stale-client' },
 			},
 		);
 		expect(customRequest).toMatchObject({
 			url: 'http://pdfrest.internal:8080/compress',
-			headers: { Accept: 'application/json' },
+			headers: { Accept: 'application/json', wsn: 'n8n' },
 		});
 	});
 

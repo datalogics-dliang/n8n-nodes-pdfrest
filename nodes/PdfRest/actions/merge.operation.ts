@@ -102,7 +102,7 @@ export const mergeOperation: INodePropertyOptions = {
 
 export const mergeDescription: INodeProperties[] = [
 	{
-		displayName: 'Merge Inputs',
+		displayName: 'PDFs to Merge',
 		name: 'mergeInputs',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -112,13 +112,18 @@ export const mergeDescription: INodeProperties[] = [
 			input: [
 				{
 					resourceId: '',
-					pages: '',
+					pages: '1-last',
+					inputType: 'inputFile',
+				},
+				{
+					resourceId: '',
+					pages: '1-last',
 					inputType: 'inputFile',
 				},
 			],
 		},
 		required: true,
-		placeholder: 'Add Merge Input',
+		placeholder: 'Add PDF to Merge',
 		displayOptions: {
 			show: {
 				operation: ['merge'],
@@ -127,7 +132,7 @@ export const mergeDescription: INodeProperties[] = [
 		description: 'The ordered PDF resources and page expressions to merge',
 		options: [
 			{
-				displayName: 'Merge Input',
+				displayName: 'PDF',
 				name: 'input',
 				values: [
 					{
@@ -162,11 +167,11 @@ export const mergeDescription: INodeProperties[] = [
 						displayName: 'Pages',
 						name: 'pages',
 						type: 'string',
-						default: '',
+						default: '1-last',
 						required: true,
 						placeholder: 'e.g. 1-3,5 or odd',
 						description:
-							'The pages to include from this PDF, using page numbers, ranges, last, even, or odd',
+							'The pages to include from this PDF; use "all" or "1-last" for every page, or select pages with numbers, ranges, "even", or "odd"',
 					},
 				],
 			},

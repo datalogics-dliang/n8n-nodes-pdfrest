@@ -16,6 +16,7 @@ export const importFormDataDescription: INodeProperties[] = [
 	createResourceIdField('importFormData'),
 	...createSecondaryFileInputSourceFields({
 		displayName: 'Form Data Input Source',
+		description: 'Choose an FDF, XFDF, XML, XDP, or XFD form data file from this workflow or one already stored by pdfRest',
 		operation: 'importFormData',
 		inputTypeName: 'formDataInputType',
 		fileFieldName: 'data_file',

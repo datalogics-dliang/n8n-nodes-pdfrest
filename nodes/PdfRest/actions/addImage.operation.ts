@@ -355,6 +355,7 @@ export const addImageDescription: INodeProperties[] = [
 		],
 		default: 'inputFile',
 		displayOptions: { show: { operation: ['addImage'] } },
+		description: 'Choose images from this workflow or images already stored by pdfRest',
 	},
 	{
 		displayName: 'Image Input File Data Field Name',

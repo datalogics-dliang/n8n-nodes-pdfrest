@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 import { createNonEmptyBodyStringField } from '../helpers/bodyFields';
 import { createIncludeFileInfoField, createResponseTypeField } from '../helpers/headers';
-import { createSecondaryFileInputSourceFields } from '../helpers/inputSource';
-import { createResourceIdField, createResourceIdOperation } from '../helpers/resourceId';
+import { createInputSourceFields, createSecondaryFileInputSourceFields } from '../helpers/inputSource';
+import { createResourceIdOperation } from '../helpers/resourceId';
 
 type ProfileSource = 'custom' | 'preset';
 
@@ -77,7 +77,15 @@ export const convertColorsOperation: INodePropertyOptions = createResourceIdOper
 });
 
 export const convertColorsDescription: INodeProperties[] = [
-	createResourceIdField('convertColors'),
+	...createInputSourceFields({
+		operation: 'convertColors',
+		description: 'Choose the PDF to recolor from this workflow or one already stored by pdfRest',
+		resourceIdDescription: 'The resource ID of the PDF to recolor',
+		file: {
+			deferUpload: true,
+			description: 'The input field containing the PDF to recolor',
+		},
+	}),
 	{
 		displayName: 'Profile Source',
 		name: 'profileSource',
@@ -131,12 +139,14 @@ export const convertColorsDescription: INodeProperties[] = [
 	},
 	...createSecondaryFileInputSourceFields({
 		displayName: 'Profile Input Source',
+		description: 'Choose an ICC profile file from this workflow or one already stored by pdfRest',
 		operation: 'convertColors',
 		show: { profileSource: ['custom'] },
 		inputTypeName: 'profileInputType',
 		fileFieldName: 'profile',
 		fileInputDataFieldName: 'profileFileDataFieldName',
 		fileInputDataFieldDisplayName: 'Profile Input File Data Field Name',
+		fileInputDescription: 'The input field containing the custom ICC color profile',
 		resourceIdName: 'profileResourceId',
 		resourceIdDisplayName: 'Profile Resource ID',
 		resourceIdBodyProperty: 'profile_id',
@@ -168,6 +178,41 @@ export const convertColorsDescription: INodeProperties[] = [
 				default: 'false',
 				description: 'Choose whether to preserve the original color definition of black elements',
 				routing: { send: { type: 'body', property: 'preserve_black' } },
+			},
+			{
+				displayName: 'Rendering Intent',
+				name: 'renderingIntent',
+				type: 'options',
+				options: [
+					{
+						name: 'Absolute Colorimetric',
+						value: 'absolute_colorimetric',
+						description: 'Preserve the source white point for proofing or exact color matching',
+					},
+					{
+						name: 'Perceptual',
+						value: 'perceptual',
+						description: 'Preserve visual relationships between colors, often for photographs',
+					},
+					{
+						name: 'Profile Default',
+						value: 'profile',
+						description: 'Use the rendering intent specified by the selected ICC profile',
+					},
+					{
+						name: 'Relative Colorimetric',
+						value: 'relative_colorimetric',
+						description: 'Keep reproducible colors and map others to the closest available color',
+					},
+					{
+						name: 'Saturation',
+						value: 'saturation',
+						description: 'Prioritize vivid colors, often for charts and diagrams',
+					},
+				],
+				default: 'profile',
+				description: 'How colors are mapped into the selected ICC profile, especially colors outside its range',
+				routing: { send: { type: 'body', property: 'rendering_intent' } },
 			},
 			createResponseTypeField('convertColors'),
 		],

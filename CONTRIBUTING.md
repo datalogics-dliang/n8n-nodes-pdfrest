@@ -27,6 +27,14 @@ If `nvm current` reports `system`, run `nvm use` before validating a change.
 The repository pins its n8n and `@n8n/cli` integration versions separately in
 `.n8n-version` and `.n8n-cli-version`.
 
+The root `.pdfrest-openapi-version` file records the pdfRest OpenAPI revision
+used as the reference for reviewing node operations and request fields. Read
+`info.version` from the [published specification](https://api.pdfrest.com/pdfrest_openapi.json)
+when reviewing API changes, and update this file in the same pull request that
+reviews a newer revision. This is a review baseline, not a claim that the node
+implements every endpoint or option in that revision. Describe any remaining
+gaps in the pull request.
+
 Start the local n8n development server with:
 
 ```bash

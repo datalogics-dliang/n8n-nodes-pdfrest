@@ -10,6 +10,7 @@ type UrlRequestFormat = 'json' | 'multipart';
 type InputSource = 'file' | 'resourceId' | 'url';
 
 interface FileInputOptions {
+	binaryDataPropertyNameParameter?: string;
 	fieldName?: string;
 	inputDataFieldName?: string;
 	inputDataFieldDisplayName?: string;
@@ -27,18 +28,24 @@ interface UrlInputOptions {
 }
 
 interface InputSourceOptions {
+	description?: string;
 	file?: FileInputOptions;
 	operation: string;
+	resourceIdDescription?: string;
 	sources?: ['file', ...InputSource[]];
 	url?: UrlInputOptions;
 }
 
 interface SecondaryFileInputSourceOptions {
+	allowNone?: boolean;
+	description?: string;
 	displayName?: string;
 	fileFieldName: string;
 	fileInputDataFieldName: string;
 	fileInputDataFieldDisplayName: string;
+	fileInputDescription?: string;
 	inputTypeName: string;
+	nestedPath?: string;
 	operation: string;
 	resourceIdBodyProperty: string;
 	resourceIdDescription: string;
@@ -93,7 +100,8 @@ export function createInputFileFields({
 					(file.deferUpload
 						? createDeferredMultipartUploadPreSend
 						: createMultipartUploadPreSend)({
-						binaryDataPropertyNameParameter: inputDataFieldName,
+						binaryDataPropertyNameParameter:
+							file.binaryDataPropertyNameParameter ?? inputDataFieldName,
 						fileFieldName,
 					}),
 				],
@@ -117,8 +125,10 @@ export function createInputFileFields({
  * pdfRest resource or upload binary files as multipart form data.
  */
 export function createInputSourceFields({
+	description,
 	file = {},
 	operation,
+	resourceIdDescription,
 	sources = ['file', 'resourceId'],
 	url = {},
 }: InputSourceOptions): INodeProperties[] {
@@ -133,6 +143,13 @@ export function createInputSourceFields({
 	const hasFileInput = sources.includes('file');
 	const hasResourceIdInput = sources.includes('resourceId');
 	const hasUrlInput = sources.includes('url');
+	const inputSourceDescription = hasResourceIdInput
+		? hasUrlInput
+			? 'Choose a file from this workflow, one already stored by pdfRest, or a publicly accessible URL'
+			: 'Choose a file from this workflow or one already stored by pdfRest'
+		: hasUrlInput
+			? 'Choose a file from this workflow or a publicly accessible URL'
+			: 'Choose a file from this workflow';
 	const sourceOptions: Record<InputSource, { name: string; value: string }> = {
 		file: { name: 'Input File', value: 'inputFile' },
 		resourceId: { name: 'Resource ID', value: 'resourceId' },
@@ -188,13 +205,16 @@ export function createInputSourceFields({
 			noDataExpression: true,
 			options: inputTypeOptions,
 			default: 'inputFile',
+			description: description ?? inputSourceDescription,
 			displayOptions: {
 				show: {
 					operation: [operation],
 				},
 			},
 		},
-		...(hasResourceIdInput ? [createResourceIdField(operation, { inputType: 'resourceId' })] : []),
+		...(hasResourceIdInput
+			? [createResourceIdField(operation, { inputType: 'resourceId', description: resourceIdDescription })]
+			: []),
 		...fileInputFields,
 		...urlInputFields,
 	];
@@ -202,11 +222,15 @@ export function createInputSourceFields({
 
 /** Creates a file-or-resource-ID selector for an auxiliary request file. */
 export function createSecondaryFileInputSourceFields({
+	allowNone = false,
+	description,
 	displayName = 'Input Source',
 	fileFieldName,
 	fileInputDataFieldName,
 	fileInputDataFieldDisplayName,
+	fileInputDescription,
 	inputTypeName,
+	nestedPath,
 	operation,
 	resourceIdBodyProperty,
 	resourceIdDescription,
@@ -215,6 +239,7 @@ export function createSecondaryFileInputSourceFields({
 	show = {},
 }: SecondaryFileInputSourceOptions): INodeProperties[] {
 	const baseShow = { operation: [operation], ...show };
+	const routingInputTypeName = nestedPath ? `/${nestedPath}.${inputTypeName}` : inputTypeName;
 	return [
 		{
 			displayName,
@@ -222,11 +247,15 @@ export function createSecondaryFileInputSourceFields({
 			type: 'options',
 			noDataExpression: true,
 			options: [
+				...(allowNone ? [{ name: 'None', value: 'none' }] : []),
 				{ name: 'Input File', value: 'inputFile' },
 				{ name: 'Resource ID', value: 'resourceId' },
 			],
 			default: 'inputFile',
-			displayOptions: { show: baseShow },
+			...(allowNone ? { default: 'none' } : {}),
+			description:
+				description ?? 'Choose a file from this workflow or one already stored by pdfRest',
+			...(nestedPath ? {} : { displayOptions: { show: baseShow } }),
 		},
 		{
 			displayName: resourceIdDisplayName,
@@ -234,7 +263,11 @@ export function createSecondaryFileInputSourceFields({
 			type: 'string',
 			default: '',
 			required: true,
-			displayOptions: { show: { ...baseShow, [inputTypeName]: ['resourceId'] } },
+			displayOptions: {
+				show: nestedPath
+					? { [routingInputTypeName]: ['resourceId'] }
+					: { ...baseShow, [inputTypeName]: ['resourceId'] },
+			},
 			description: resourceIdDescription,
 			routing: { send: { type: 'body', property: resourceIdBodyProperty } },
 		},
@@ -245,12 +278,20 @@ export function createSecondaryFileInputSourceFields({
 				fieldName: fileFieldName,
 				inputDataFieldName: fileInputDataFieldName,
 				inputDataFieldDisplayName: fileInputDataFieldDisplayName,
+				...(nestedPath
+					? { binaryDataPropertyNameParameter: `${nestedPath}.${fileInputDataFieldName}` }
+					: {}),
+				...(fileInputDescription ? { description: fileInputDescription } : {}),
 				deferUpload: true,
 			},
 		}).map((field) => ({
 			...field,
 			...(field.type === 'notice' ? { name: `${inputTypeName}Notice` } : {}),
-			displayOptions: { show: { ...baseShow, [inputTypeName]: ['inputFile'] } },
+			displayOptions: {
+				show: nestedPath
+					? { [routingInputTypeName]: allowNone ? ['inputFile'] : ['inputFile', undefined] }
+					: { ...baseShow, [inputTypeName]: ['inputFile'] },
+			},
 		})),
 	];
 }

@@ -1,0 +1,29 @@
+%!PS-Adobe-3.0
+%%Title: pdfRest PostScript Sample
+%%Creator: pdfRest API Toolkit example
+%%Pages: 1
+%%BoundingBox: 0 0 612 792
+%%LanguageLevel: 2
+%%EndComments
+%%Page: 1 1
+%%BeginPageSetup
+<< /PageSize [612 792] >> setpagedevice
+%%EndPageSetup
+
+/Helvetica-Bold findfont 20 scalefont setfont
+0 setgray
+72 720 moveto (pdfRest PostScript Sample) show
+
+/Helvetica findfont 11 scalefont setfont
+72 690 moveto (Convert this file to PDF with 02-joboptions.joboptions.) show
+72 672 moveto (Expected output: one US Letter page with text and a blue bar.) show
+
+0.15 0.42 0.72 setrgbcolor
+72 560 468 60 rectfill
+
+1 setgray
+/Helvetica-Bold findfont 16 scalefont setfont
+90 583 moveto (PostScript to PDF) show
+
+showpage
+%%EOF

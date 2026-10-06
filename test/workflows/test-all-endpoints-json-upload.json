@@ -3314,7 +3314,7 @@
     },
     {
       "parameters": {
-        "numberInputs": 7
+        "numberInputs": 8
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
@@ -3396,6 +3396,62 @@
       ],
       "id": "b2088bb6-b966-4c06-891b-331b40b8c9c2",
       "name": "If Errors Exist"
+    },
+    {
+      "parameters": {
+        "operation": "convertPostscript",
+        "inputType": "resourceId",
+        "resourceId": "={{ $json.files[0].id }}",
+        "options": {
+          "includeFileInfo": false
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        432,
+        10736
+      ],
+      "id": "0ab62499-308e-49ba-9c52-73f6abe93553",
+      "name": "Convert PDF to PostScript",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        880,
+        10736
+      ],
+      "id": "cd00192c-d68e-4f10-8879-6496d3f149e0",
+      "name": "Record Convert PDF to PostScript Result"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { skipped: { node: \"Convert PDF to PostScript\", blockedBy: $prevNode.name } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        880,
+        10896
+      ],
+      "id": "df9b9f37-b9f7-403d-a78c-5710512ff547",
+      "name": "Record Convert PDF to PostScript Skipped After Shared Upload Failure"
     }
   ],
   "connections": {
@@ -5830,6 +5886,11 @@
             "node": "Record Shared Upload Result",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Convert PDF to PostScript",
+            "type": "main",
+            "index": 0
           }
         ],
         [
@@ -6007,6 +6068,11 @@
             "node": "Record Flatten PDF Layers Skipped After Shared Upload Failure",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Record Convert PDF to PostScript Skipped After Shared Upload Failure",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -6098,6 +6164,46 @@
           }
         ],
         []
+      ]
+    },
+    "Convert PDF to PostScript": {
+      "main": [
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Convert PDF to PostScript Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Results 5",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Record Convert PDF to PostScript Skipped After Shared Upload Failure": {
+      "main": [
+        [
+          {
+            "node": "Merge Results 5",
+            "type": "main",
+            "index": 7
+          }
+        ]
       ]
     }
   },

@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import { createNonEmptyBodyStringField } from '../helpers/bodyFields';
 import { createIncludeFileInfoField, createResponseTypeField } from '../helpers/headers';
-import { createInputSourceFields } from '../helpers/inputSource';
+import { createInputSourceFields, createSecondaryFileInputSourceFields } from '../helpers/inputSource';
 import { createDeferredMultipartUploadPreSend } from '../helpers/multipart';
 
 type ConversionType =
@@ -25,6 +25,7 @@ type ConversionType =
 	| 'word'
 	| 'xml';
 type InputType = 'inputFile' | 'resourceId' | 'url';
+type JobOptionsInputType = 'none' | 'inputFile' | 'resourceId';
 
 const structuredTextOptionsExample = JSON.stringify(
 	{
@@ -73,6 +74,7 @@ const structuredTextProperties = [
 	'structured_text_options',
 ] as const;
 const markdownProperties = ['image_files', 'image_ids'] as const;
+const jobOptionsProperties = ['job_options', 'job_options_id'] as const;
 const allFormatProperties = [
 	...optimizationProperties,
 	...taggedPdfProperties,
@@ -80,6 +82,7 @@ const allFormatProperties = [
 	...htmlProperties,
 	...structuredTextProperties,
 	...markdownProperties,
+	...jobOptionsProperties,
 ] as const;
 
 function normalizeStructuredTextOptions(
@@ -120,6 +123,14 @@ function deleteBodyProperty(body: IHttpRequestOptions['body'], property: string)
 		body.delete(property);
 	} else if (body && typeof body === 'object' && !Array.isArray(body) && !Buffer.isBuffer(body)) {
 		delete (body as IDataObject)[property];
+	}
+}
+
+function setBodyProperty(body: IHttpRequestOptions['body'], property: string, value: string): void {
+	if (body instanceof FormData) {
+		body.set(property, value);
+	} else if (body && typeof body === 'object' && !Array.isArray(body) && !Buffer.isBuffer(body)) {
+		(body as IDataObject)[property] = value;
 	}
 }
 
@@ -194,9 +205,51 @@ function createConvertToPdfPreSend(): PreSendAction {
 		if (conversionType === 'markdown') {
 			markdownProperties.forEach((property) => activeProperties.add(property));
 		}
+		if (conversionType === 'postscript' && inputType !== 'url') {
+			jobOptionsProperties.forEach((property) => activeProperties.add(property));
+		}
 
 		for (const property of allFormatProperties) {
 			if (!activeProperties.has(property)) deleteBodyProperty(body, property);
+		}
+		if (conversionType === 'postscript' && inputType !== 'url') {
+			const options = this.getNodeParameter('options', {}) as IDataObject;
+			const hasJobOptionsField = Object.prototype.hasOwnProperty.call(options, 'jobOptions');
+			const jobOptionsInputType = this.getNodeParameter(
+				hasJobOptionsField ? 'options.jobOptions.source.inputType' : 'jobOptionsInputType',
+				hasJobOptionsField ? 'inputFile' : 'none',
+			) as JobOptionsInputType;
+			if (!hasJobOptionsField && jobOptionsInputType === 'resourceId') {
+				setBodyProperty(
+					body,
+					'job_options_id',
+					this.getNodeParameter('jobOptionsResourceId', '') as string,
+				);
+			} else if (!hasJobOptionsField && jobOptionsInputType === 'inputFile') {
+				setBodyProperty(
+					body,
+					'job_options',
+					this.getNodeParameter('jobOptionsFileDataFieldName', 'data') as string,
+				);
+				await createDeferredMultipartUploadPreSend({
+					binaryDataPropertyNameParameter: 'jobOptionsFileDataFieldName',
+					fileFieldName: 'job_options',
+				}).call(this, requestOptions);
+			}
+			if (jobOptionsInputType === 'none') {
+				deleteBodyProperty(body, 'job_options');
+				deleteBodyProperty(body, 'job_options_id');
+			} else if (jobOptionsInputType === 'inputFile') {
+				deleteBodyProperty(body, 'job_options_id');
+			} else if (jobOptionsInputType === 'resourceId') {
+				deleteBodyProperty(body, 'job_options');
+				const jobOptionsId = getBodyValue(body, 'job_options_id');
+				if (typeof jobOptionsId !== 'string' || jobOptionsId.trim().length === 0) {
+					throw new NodeOperationError(this.getNode(), 'Job Options Resource ID is required.');
+				}
+			} else {
+				throw new NodeOperationError(this.getNode(), 'Job Options Input Source has an invalid value.');
+			}
 		}
 
 		if (structuredTextConversionTypes.includes(conversionType)) {
@@ -287,6 +340,7 @@ export const convertToPdfDescription: INodeProperties[] = [
 	},
 	...createInputSourceFields({
 		operation: 'convertToPdf',
+		description: 'Choose a file from this workflow, a pdfRest resource ID, or a publicly accessible URL',
 		sources: ['file', 'resourceId', 'url'],
 		file: { deferUpload: true },
 		url: { requestFormat: 'multipart' },
@@ -391,6 +445,48 @@ export const convertToPdfDescription: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'image_ids' } },
 			},
 			{
+				displayName: 'Job Options',
+				name: 'jobOptions',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: false },
+				default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
+				description:
+					'Choose a .joboptions input file or resource ID to use custom PostScript conversion settings',
+				displayOptions: {
+					show: { '/conversionType': ['postscript'], '/inputType': ['inputFile', 'resourceId'] },
+				},
+				options: [
+					{
+						displayName: 'Job Options',
+						name: 'source',
+						values: [
+							{
+								displayName:
+									'A .joboptions file controls PostScript conversion settings. Remove this field to use default settings.',
+								name: 'jobOptionsNotice',
+								type: 'notice',
+								default: '',
+							},
+							...createSecondaryFileInputSourceFields({
+								operation: 'convertToPdf',
+								nestedPath: 'options.jobOptions.source',
+								displayName: 'Input Source',
+								inputTypeName: 'inputType',
+								fileFieldName: 'job_options',
+								fileInputDataFieldName: 'fileDataFieldName',
+								fileInputDataFieldDisplayName: 'Job Options Input File Data Field Name',
+								fileInputDescription: 'The input field containing the .joboptions settings file',
+								resourceIdName: 'resourceId',
+								resourceIdDisplayName: 'Job Options Resource ID',
+								resourceIdBodyProperty: 'job_options_id',
+								resourceIdDescription:
+									'The resource ID of a previously uploaded .joboptions settings file',
+							}),
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Locale',
 				name: 'locale',
 				type: 'options',
@@ -466,6 +562,7 @@ export const convertToPdfDescription: INodeProperties[] = [
 				},
 				description:
 					'Conversion options for document metadata, tagging, page setup, typography, tables, and format-specific behavior',
+				hint: 'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
 				routing: { send: { type: 'body', property: 'structured_text_options' } },
 			},
 			{
@@ -510,19 +607,5 @@ export const convertToPdfDescription: INodeProperties[] = [
 				routing: { send: { type: 'body', property: 'web_layout' } },
 			},
 		],
-	},
-	{
-		displayName:
-			'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
-		name: 'structuredTextOptionsNotice',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['convertToPdf'],
-				conversionType: ['csv', 'json', 'markdown', 'plainText', 'xml'],
-				'/options.structuredTextOptions': [{ _cnd: { exists: true } }],
-			},
-		},
 	},
 ];

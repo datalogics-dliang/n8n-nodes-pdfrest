@@ -16,6 +16,7 @@ export const addAttachmentDescription: INodeProperties[] = [
 	createResourceIdField('addAttachment'),
 	...createSecondaryFileInputSourceFields({
 		displayName: 'Attachment Input Source',
+		description: 'Choose the file to attach from this workflow or one already stored by pdfRest',
 		operation: 'addAttachment',
 		inputTypeName: 'attachmentInputType',
 		fileFieldName: 'file_to_attach',

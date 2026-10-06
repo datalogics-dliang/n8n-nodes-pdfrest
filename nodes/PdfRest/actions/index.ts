@@ -18,6 +18,7 @@ import {
 	convertPowerPointOperation,
 } from './convertPowerPoint.operation';
 import { convertPngDescription, convertPngOperation } from './convertPng.operation';
+import { convertPostscriptDescription, convertPostscriptOperation } from './convertPostscript.operation';
 import { convertWordDescription, convertWordOperation } from './convertWord.operation';
 import {
 	convertXfaToAcroformsDescription,
@@ -25,6 +26,7 @@ import {
 } from './convertXfaToAcroforms.operation';
 import { convertPdfADescription, convertPdfAOperation } from './convertPdfA.operation';
 import { convertPdfXDescription, convertPdfXOperation } from './convertPdfX.operation';
+import { createZugferdDescription, createZugferdOperation } from './createZugferd.operation';
 import { deleteResourceDescription, deleteResourceOperation } from './deleteResource.operation';
 import { deleteResourcesDescription, deleteResourcesOperation } from './deleteResources.operation';
 import { decryptDescription, decryptOperation } from './decrypt.operation';
@@ -66,6 +68,7 @@ import { translateDescription, translateOperation } from './translate.operation'
 import { unrestrictDescription, unrestrictOperation } from './unrestrict.operation';
 import { unzipDescription, unzipOperation } from './unzip.operation';
 import { uploadDescription, uploadOperation } from './upload.operation';
+import { validateZugferdDescription, validateZugferdOperation } from './validateZugferd.operation';
 import { watermarkDescription, watermarkOperation } from './watermark.operation';
 import { zipDescription, zipOperation } from './zip.operation';
 import { createPdfRestRequestLogger } from '../helpers/requestLogger';
@@ -95,11 +98,13 @@ const operationOptions = [
 	convertPdfAOperation,
 	convertPdfXOperation,
 	convertPngOperation,
+	convertPostscriptOperation,
 	convertPowerPointOperation,
 	convertTifOperation,
 	convertToPdfOperation,
 	convertWordOperation,
 	convertXfaToAcroformsOperation,
+	createZugferdOperation,
 	decryptOperation,
 	deleteResourceOperation,
 	deleteResourcesOperation,
@@ -131,6 +136,7 @@ const operationOptions = [
 	unrestrictOperation,
 	unzipOperation,
 	uploadOperation,
+	validateZugferdOperation,
 	watermarkOperation,
 	zipOperation,
 ].sort((left, right) => String(left.action).localeCompare(String(right.action)));
@@ -259,12 +265,14 @@ const basePdfRestDescription: INodeProperties[] = [
 	...convertMarkdownDescription,
 	...convertToPdfDescription,
 	...convertPngDescription,
+	...convertPostscriptDescription,
 	...convertPowerPointDescription,
 	...convertTifDescription,
 	...convertWordDescription,
 	...convertXfaToAcroformsDescription,
 	...convertPdfADescription,
 	...convertPdfXDescription,
+	...createZugferdDescription,
 	...deleteResourcesDescription,
 	...deleteResourceDescription,
 	...decryptDescription,
@@ -296,6 +304,7 @@ const basePdfRestDescription: INodeProperties[] = [
 	...unrestrictDescription,
 	...unzipDescription,
 	...uploadDescription,
+	...validateZugferdDescription,
 	...watermarkDescription,
 	...zipDescription,
 	{

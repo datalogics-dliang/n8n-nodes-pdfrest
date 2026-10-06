@@ -1,7 +1,13 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import {
+	displayParameter,
+	getNodeParameters,
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+} from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 import { signDescription, signOperation } from '../../../../nodes/PdfRest/actions/sign.operation';
 import { createDeferredMultipartUploadsPreSend } from '../../../../nodes/PdfRest/helpers/multipart';
+import multipartWorkflow from '../../../workflows/test-all-endpoints-multipart-upload.json';
 
 function getField(name: string) {
 	return signDescription.find((field) => field.name === name);
@@ -9,6 +15,10 @@ function getField(name: string) {
 
 function getOptionalField(name: string) {
 	return getField('options')?.options?.find((field) => field.name === name);
+}
+
+function getLogoField(name: string) {
+	return getOptionalField('logo')?.options?.[0]?.values?.find((field) => field.name === name);
 }
 
 const executionContext = {
@@ -330,26 +340,73 @@ describe('Sign PDF operation', () => {
 			default: {},
 			displayOptions: { show: { operation: ['sign'] } },
 		});
-		expect(optionalFields?.options?.map(({ name }) => name)).toEqual([
+		expect(optionalFields?.options?.filter(({ type }) => type !== 'hidden').map(({ name }) => name)).toEqual([
 			'includeFileInfo',
-			'logoInputType',
-			'logoId',
-			'logoFileDataFieldName',
+			'logo',
 			'output',
 			'responseType',
 		]);
-		const logo = getOptionalField('logoId');
-		expect(logo).toMatchObject({
+		expect(getOptionalField('logo')).toMatchObject({
+			displayName: 'Logo',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: false },
+			default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
+		});
+		expect(getOptionalField('logo')?.options?.[0]?.values?.[0]).toMatchObject({
+			displayName: 'Add a JPG, PNG, TIFF, or BMP image to appear with the digital signature',
+			name: 'logoNotice',
+			type: 'notice',
+		});
+		expect(getLogoField('inputType')).toMatchObject({
+			displayName: 'Input Source',
+			options: [
+				{ name: 'Input File', value: 'inputFile' },
+				{ name: 'Resource ID', value: 'resourceId' },
+			],
+			default: 'inputFile',
+		});
+		expect(getLogoField('resourceId')).toMatchObject({
 			displayName: 'Logo Resource ID',
 			type: 'string',
 			default: '',
+			required: true,
 			routing: { send: { type: 'body', property: 'logo_id' } },
 		});
-		expect(logo?.displayOptions).toEqual({ show: { logoInputType: ['resourceId'] } });
-		expect(getOptionalField('logoFileDataFieldName')).toMatchObject({
-			displayName: 'Logo Input File Data Field Name',
+		expect(getLogoField('resourceId')?.displayOptions).toEqual({
+			show: { '/options.logo.source.inputType': ['resourceId'] },
 		});
-		expect(getOptionalField('logoFileDataFieldName')?.routing?.send?.preSend).toBeUndefined();
+		expect(getLogoField('fileDataFieldName')).toMatchObject({
+			displayName: 'Logo Input File Data Field Name',
+			required: true,
+			displayOptions: { show: { '/options.logo.source.inputType': ['inputFile', undefined] } },
+			routing: { send: { type: 'body', property: 'logo_file' } },
+		});
+		expect(getLogoField('fileDataFieldName')?.routing?.send?.preSend).toHaveLength(1);
+		const logoInput = (inputType: string) => ({
+			inputType: inputType === 'inputFile' ? 'resourceId' : 'inputFile',
+			options: { logo: { source: { inputType } } },
+		});
+		expect(
+			displayParameter(logoInput('inputFile'), getLogoField('fileDataFieldName')!, null, undefined),
+		).toBe(true);
+		expect(
+			displayParameter(logoInput('inputFile'), getLogoField('resourceId')!, null, undefined),
+		).toBe(false);
+		expect(
+			displayParameter(logoInput('resourceId'), getLogoField('fileDataFieldName')!, null, undefined),
+		).toBe(false);
+		expect(
+			displayParameter(logoInput('resourceId'), getLogoField('resourceId')!, null, undefined),
+		).toBe(true);
+		const logo = getOptionalField('logo')!;
+		const logoParameters = {
+			logo: { source: { inputType: 'resourceId', resourceId: 'logo-id' } },
+		};
+		expect(getNodeParameters([logo], logoParameters, false, true, null, undefined, {
+			nodeValuesRoot: { options: logoParameters },
+		})).toEqual(
+			logoParameters,
+		);
 
 		const output = getOptionalField('output');
 		expect(output).toMatchObject({
@@ -378,15 +435,59 @@ describe('Sign PDF operation', () => {
 		).rejects.toThrow('Output File Name must contain at least one character');
 	});
 
+	it('stores the multipart CI logo using the current grouped parameters', () => {
+		const signingNode = multipartWorkflow.nodes.find((node) => node.name === 'Digitally Sign PDF');
+		const options = signingNode?.parameters.options;
+		expect(options).toEqual({
+			logo: { source: { inputType: 'inputFile', fileDataFieldName: 'data_3' } },
+		});
+		expect(
+			getNodeParameters([getOptionalField('logo')!], options!, false, true, null, undefined, {
+				nodeValuesRoot: { options },
+			}),
+		).toEqual({ logo: { source: { fileDataFieldName: 'data_3' } } });
+	});
+
+	it('runs the legacy logo branch through the multipart CI completion barrier', () => {
+		const legacyName = 'Digitally Sign PDF (Legacy)';
+		const resultName = 'Record Digitally Sign PDF (Legacy) Result';
+		const legacyNode = multipartWorkflow.nodes.find((node) => node.name === legacyName);
+		expect(legacyNode).toMatchObject({
+			onError: 'continueErrorOutput',
+			notesInFlow: true,
+			parameters: {
+				operation: 'sign',
+				options: { logoInputType: 'inputFile', logoFileDataFieldName: 'data_3' },
+			},
+		});
+		expect(legacyNode?.notes).toContain('original flat Logo fields');
+		expect(multipartWorkflow.connections['Aggregate Files for Signed PDF'].main[0]).toContainEqual({
+			node: legacyName,
+			type: 'main',
+			index: 0,
+		});
+		for (const output of multipartWorkflow.connections[legacyName].main) {
+			expect(output).toContainEqual({ node: resultName, type: 'main', index: 0 });
+		}
+		expect(multipartWorkflow.connections[resultName].main[0]).toContainEqual({
+			node: 'Merge Complex Results 2',
+			type: 'main',
+			index: 4,
+		});
+		expect(
+			multipartWorkflow.nodes.find((node) => node.name === 'Merge Complex Results 2')?.parameters,
+		).toMatchObject({ numberInputs: 5 });
+	});
+
 	it('adds an input-file logo to the final multipart request', async () => {
 		const logoPreSend = getField('credentialType')?.routing?.send?.preSend?.[1];
 		expect(logoPreSend).toBeDefined();
-		const options = { logoInputType: 'inputFile', logoFileDataFieldName: 'data_3' };
+		const options = { logo: { source: { inputType: 'inputFile', fileDataFieldName: 'data_3' } } };
 		const context = {
 			...executionContext,
 			getNodeParameter: (name: string, fallback: unknown) => {
 				if (name === 'options') return options;
-				if (name === 'options.logoFileDataFieldName') return options.logoFileDataFieldName;
+				if (name === 'options.logo.source.fileDataFieldName') return 'data_3';
 				return fallback;
 			},
 			helpers: {
@@ -408,12 +509,103 @@ describe('Sign PDF operation', () => {
 			logo_file: 'data_3',
 			signature_configuration: '{"type":"new","name":"esignature"}',
 		});
+		await getLogoField('fileDataFieldName')?.routing?.send?.preSend?.[0]?.call(context, request);
 		await createDeferredMultipartUploadsPreSend().call(context, request);
 
 		const formData = request.body as unknown as FormData;
 		expect(formData).toBeInstanceOf(FormData);
 		expect((formData.get('logo_file') as File).name).toBe('signature-logo.png');
 		expect((formData.get('logo_file') as File).type).toBe('image/png');
+	});
+
+	it('uses only the selected logo source and preserves saved logo parameters', async () => {
+		const preSend = getField('credentialType')?.routing?.send?.preSend?.[1];
+		const resourceContext = {
+			...executionContext,
+			getNodeParameter: (name: string, fallback: unknown) =>
+				({
+					options: { logo: { source: { inputType: 'resourceId', resourceId: 'logo-id' } } },
+					'options.logo.source.resourceId': 'logo-id',
+				})[name as 'options' | 'options.logo.source.resourceId'] ?? fallback,
+		} as IExecuteSingleFunctions;
+		const resourceRequest: IHttpRequestOptions = {
+			url: '/signed-pdf',
+			body: { logo_file: 'stale', logo_id: 'stale' },
+		};
+		await preSend?.call(resourceContext, resourceRequest);
+		expect(resourceRequest.body).toEqual({ logo_id: 'logo-id' });
+
+		const legacyContext = {
+			...executionContext,
+			getNodeParameter: (name: string, fallback: unknown) =>
+				name === 'options'
+					? { logoInputType: 'resourceId', logoId: 'saved-logo-id' }
+					: fallback,
+		} as IExecuteSingleFunctions;
+		const legacyRequest: IHttpRequestOptions = { url: '/signed-pdf', body: {} };
+		await preSend?.call(legacyContext, legacyRequest);
+		expect(legacyRequest.body).toEqual({ logo_id: 'saved-logo-id' });
+
+		const legacyFileContext = {
+			...executionContext,
+			getNodeParameter: (name: string, fallback: unknown) => {
+				if (name === 'options') {
+					return { logoInputType: 'inputFile', logoFileDataFieldName: 'saved-logo' };
+				}
+				if (name === 'options.logoFileDataFieldName') return 'saved-logo';
+				return fallback;
+			},
+			helpers: {
+				assertBinaryData: () => ({
+					data: '',
+					fileName: 'saved-logo.png',
+					mimeType: 'image/png',
+				}),
+				getBinaryDataBuffer: async () => Buffer.from('logo'),
+			},
+		} as unknown as IExecuteSingleFunctions;
+		const legacyFileRequest: IHttpRequestOptions = { url: '/signed-pdf', body: {} };
+		await preSend?.call(legacyFileContext, legacyFileRequest);
+		await createDeferredMultipartUploadsPreSend().call(legacyFileContext, legacyFileRequest);
+		expect((legacyFileRequest.body as FormData).get('logo_file')).toBeInstanceOf(Blob);
+	});
+
+	it('retains legacy logo fields when n8n normalizes an imported workflow', async () => {
+		const optionsField = getField('options')!;
+		const legacyOptionsField = {
+			...optionsField,
+			displayOptions: undefined,
+			options: optionsField.options?.filter(({ type }) => type === 'hidden'),
+		};
+		const preSend = getField('credentialType')?.routing?.send?.preSend?.[1];
+		for (const [savedOptions, expectedBody] of [
+			[
+				{ logoInputType: 'resourceId', logoId: 'saved-logo-id' },
+				{ logo_id: 'saved-logo-id' },
+			],
+			[
+				{ logoInputType: 'inputFile', logoFileDataFieldName: 'saved-logo' },
+				{ logo_file: 'saved-logo' },
+			],
+		] as const) {
+			const normalized = getNodeParameters(
+				[legacyOptionsField],
+				{ options: savedOptions },
+				false,
+				true,
+				null,
+				undefined,
+			);
+			expect(normalized).toEqual({ options: savedOptions });
+			const context = {
+				...executionContext,
+				getNodeParameter: (name: string, fallback: unknown) =>
+					name === 'options' ? normalized?.options : fallback,
+			} as IExecuteSingleFunctions;
+			const request: IHttpRequestOptions = { url: '/signed-pdf', body: {} };
+			await preSend?.call(context, request);
+			expect(request.body).toEqual(expectedBody);
+		}
 	});
 
 	it('routes both headers and omits Response-Type by default', async () => {
@@ -473,9 +665,14 @@ describe('Sign PDF operation', () => {
 
 		const bodyProperties = signDescription.flatMap((field) => [
 			...(field.routing?.send?.type === 'body' ? [field.routing.send.property] : []),
-			...(field.options ?? []).flatMap((option) =>
-				option.routing?.send?.type === 'body' ? [option.routing.send.property] : [],
-			),
+			...(field.options ?? []).flatMap((option) => [
+				...(option.routing?.send?.type === 'body' ? [option.routing.send.property] : []),
+				...(option.options ?? []).flatMap((group) =>
+					(group.values ?? []).flatMap((value) =>
+						value.routing?.send?.type === 'body' ? [value.routing.send.property] : [],
+				),
+				),
+			]),
 		]);
 		expect(bodyProperties).toEqual([
 			'id',

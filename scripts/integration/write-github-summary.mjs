@@ -141,6 +141,68 @@ export function classifyError(error) {
 	return 'execution';
 }
 
+function safeErrorDetails(error, httpStatus) {
+	if (httpStatus !== undefined && httpStatus >= 400) {
+		let message = 'The API rejected this request';
+		if (httpStatus === 401 || httpStatus === 403) {
+			message = 'The API rejected authentication or access to this operation';
+		} else if (httpStatus === 404) {
+			message = 'The requested resource was not found';
+		} else if (httpStatus === 429) {
+			message = 'The API rate limit was reached';
+		} else if (httpStatus >= 500) {
+			message = 'The API returned a server error';
+		}
+		return { errorCode: `HTTP_${httpStatus}`, message };
+	}
+
+	const name = error.details?.name;
+	const rawMessage = error.details?.message;
+	if (name === 'NodeOperationError' && typeof rawMessage === 'string') {
+		if (
+			/\bbinary (?:file|data|field)\b/i.test(rawMessage) &&
+			/\b(?:missing|not found|none was found|does not contain|doesn't contain|no binary|cannot find)\b/i.test(rawMessage)
+		) {
+			return {
+				errorCode: 'MISSING_BINARY_INPUT',
+				message: 'The selected input file field is missing from this item',
+			};
+		}
+		if (/^The input data field ".*" must include a file name\.$/.test(rawMessage)) {
+			return {
+				errorCode: 'MISSING_FILE_NAME',
+				message: 'The input file needs a file name',
+			};
+		}
+		if (rawMessage === 'Scale must be a number greater than zero.') {
+			return {
+				errorCode: 'INVALID_SCALE',
+				message: 'Scale must be a number greater than zero',
+			};
+		}
+	}
+
+	if (name === 'OutputDownloadValidationError') {
+		return {
+			errorCode: 'OUTPUT_DOWNLOAD_INVALID',
+			message: 'The downloaded output did not pass the workflow file check',
+		};
+	}
+	if (name === 'UnexpectedValidationStatus') {
+		return {
+			errorCode: 'VALIDATION_STATUS_INVALID',
+			message: 'The validation endpoint did not report a valid result',
+		};
+	}
+	if (name === 'NodeOperationError') {
+		return { errorCode: 'NODE_OPERATION', message: 'The node could not process this item' };
+	}
+	if (name === 'NodeApiError') {
+		return { errorCode: 'NODE_API', message: 'The API request failed without an HTTP status' };
+	}
+	return { errorCode: 'EXECUTION', message: 'The workflow failed without a recognized error type' };
+}
+
 function sanitizeInput(input) {
 	if (!input || typeof input !== 'object') return undefined;
 
@@ -162,12 +224,15 @@ function sanitizeInput(input) {
 export function sanitizeError(error) {
 	const itemIndex = safeInteger(error.details?.itemIndex);
 	const httpStatus = safeHttpStatus(error.details?.httpCode);
+	const { errorCode, message } = safeErrorDetails(error, httpStatus);
 	const inputs = Array.isArray(error.details?.inputs)
 		? error.details.inputs.map(sanitizeInput).filter(Boolean)
 		: [];
 	const sanitized = {
 		node: safeLabel(error.node, 'Unknown node'),
 		classification: classifyError(error),
+		errorCode,
+		message,
 		inputs,
 	};
 	if (itemIndex !== undefined) sanitized.itemIndex = itemIndex;
@@ -234,6 +299,8 @@ export function formatError(error) {
 		lines.push(`  - **HTTP status:** ${escapeMarkdown(error.httpStatus)}`);
 	}
 	lines.push(`  - **Classification:** ${escapeMarkdown(error.classification)}`);
+	lines.push(`  - **Error code:** ${escapeMarkdown(error.errorCode)}`);
+	lines.push(`  - **Message:** ${escapeMarkdown(error.message)}`);
 	if (error.inputs.length > 0) {
 		lines.push('  - **Input fields:**');
 		for (const input of error.inputs) {
@@ -317,14 +384,13 @@ function main() {
 		outcome: process.env.LIVE_TEST_OUTCOME ?? 'unknown',
 	});
 	writeSanitizedDiagnostics(artifactOutput, buildArtifact(diagnostics));
-	appendFileSync(
-		output,
-		buildSummary({
-			diagnostics,
-			artifactName: process.env.LIVE_TEST_ARTIFACT_NAME,
-			artifactUrl: process.env.LIVE_TEST_ARTIFACT_URL,
-		}),
-	);
+	const summary = buildSummary({
+		diagnostics,
+		artifactName: process.env.LIVE_TEST_ARTIFACT_NAME,
+		artifactUrl: process.env.LIVE_TEST_ARTIFACT_URL,
+	});
+	appendFileSync(output, summary);
+	if (diagnostics.outcome !== 'success') process.stdout.write(summary);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) main();

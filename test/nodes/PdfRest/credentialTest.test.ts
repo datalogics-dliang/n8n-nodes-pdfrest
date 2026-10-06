@@ -16,7 +16,7 @@ describe('pdfRest credential test', () => {
 	});
 
 	it.each(['https://api.pdfrest.com', 'https://eu-api.pdfrest.com'])(
-		'sends only the API key header to %s/up',
+		'sends the API key and client header to %s/up',
 		async (baseUrl) => {
 			const credential = new PdfRestApi();
 			if (typeof credential.authenticate !== 'function')
@@ -30,7 +30,7 @@ describe('pdfRest credential test', () => {
 			expect(request).toEqual({
 				method: 'GET',
 				url: `${baseUrl}/up`,
-				headers: { 'Api-Key': 'test-api-key' },
+				headers: { 'Api-Key': 'test-api-key', wsn: 'n8n' },
 			});
 		},
 	);
@@ -52,7 +52,7 @@ describe('pdfRest credential test', () => {
 		).toEqual({
 			method: 'GET',
 			url: 'http://pdfrest.internal:8080/up',
-			headers: {},
+			headers: { wsn: 'n8n' },
 		});
 	});
 });

@@ -64,6 +64,7 @@ export const zipDescription: INodeProperties[] = [
 		],
 		default: 'inputFile',
 		displayOptions: { show: { operation: ['zip'] } },
+		description: 'Choose files from this workflow or files already stored by pdfRest for the ZIP archive',
 	},
 	{
 		displayName: 'Resource IDs',

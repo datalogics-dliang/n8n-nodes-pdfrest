@@ -246,6 +246,7 @@ export const watermarkDescription: INodeProperties[] = [
 	},
 	...createSecondaryFileInputSourceFields({
 		displayName: 'Watermark Input Source',
+		description: 'Choose a PDF watermark from this workflow or one already stored by pdfRest',
 		operation: 'watermark',
 		show: { watermarkType: ['pdfResource'] },
 		inputTypeName: 'watermarkInputType',

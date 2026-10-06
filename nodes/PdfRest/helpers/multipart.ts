@@ -13,6 +13,11 @@ interface MultipartUploadOptions {
 const deferredMultipartUploads = new WeakMap<IHttpRequestOptions, MultipartUploadOptions[]>();
 
 function appendMultipartValue(formData: FormData, name: string, value: unknown): void {
+	if (value instanceof Blob) {
+		formData.append(name, value);
+		return;
+	}
+
 	if (Array.isArray(value)) {
 		if (value.some((entry) => typeof entry === 'object' && entry !== null)) {
 			formData.append(name, JSON.stringify(value));

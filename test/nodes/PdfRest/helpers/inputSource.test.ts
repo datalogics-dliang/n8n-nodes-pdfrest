@@ -1,3 +1,4 @@
+import { displayParameter, displayParameterPath } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 import {
 	createInputSourceFields,
@@ -103,5 +104,49 @@ describe('createInputSourceFields', () => {
 			displayOptions: { show: { operation: ['addImage'], imageInputType: ['inputFile'] } },
 			routing: { send: { property: 'image_file' } },
 		});
+	});
+
+	it('routes grouped secondary fields using their nested source selector', () => {
+		const fields = createSecondaryFileInputSourceFields({
+			operation: 'sign',
+			inputTypeName: 'inputType',
+			nestedPath: 'options.logo.source',
+			fileFieldName: 'logo_file',
+			fileInputDataFieldName: 'fileDataFieldName',
+			fileInputDataFieldDisplayName: 'Logo Input File Data Field Name',
+			resourceIdName: 'resourceId',
+			resourceIdDisplayName: 'Logo Resource ID',
+			resourceIdBodyProperty: 'logo_id',
+			resourceIdDescription: 'An existing logo resource',
+		});
+
+		expect(fields[1].displayOptions?.show).toEqual({
+			'/options.logo.source.inputType': ['resourceId'],
+		});
+		expect(fields[2].displayOptions?.show).toEqual({
+			'/options.logo.source.inputType': ['inputFile', undefined],
+		});
+		const fileField = fields[2];
+		const resourceIdField = fields[1];
+		for (const [primaryInputType, logoInputType, expectedFile] of [
+			['resourceId', 'inputFile', true],
+			['inputFile', 'resourceId', false],
+		] as const) {
+			const parameters = {
+				inputType: primaryInputType,
+				options: { logo: { source: { inputType: logoInputType } } },
+			};
+			expect(displayParameter(parameters, fileField, null, undefined)).toBe(expectedFile);
+			expect(displayParameter(parameters, resourceIdField, null, undefined)).toBe(!expectedFile);
+			expect(
+				displayParameterPath(parameters, fileField, 'options.logo.source', null, undefined),
+			).toBe(expectedFile);
+			expect(
+				displayParameterPath(parameters, resourceIdField, 'options.logo.source', null, undefined),
+			).toBe(!expectedFile);
+		}
+		const defaultInput = { options: { logo: { source: { fileDataFieldName: 'data_3' } } } };
+		expect(displayParameter(defaultInput, fileField, null, undefined)).toBe(true);
+		expect(displayParameter(defaultInput, resourceIdField, null, undefined)).toBe(false);
 	});
 });

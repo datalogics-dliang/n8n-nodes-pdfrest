@@ -1476,7 +1476,7 @@
     },
     {
       "parameters": {
-        "numberInputs": 3
+        "numberInputs": 6
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
@@ -2596,7 +2596,7 @@
     },
     {
       "parameters": {
-        "numberInputs": 4
+        "numberInputs": 5
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
@@ -2759,8 +2759,12 @@
         "pfxPassphraseFileDataFieldName": "data_2",
         "signatureConfiguration": "{\n  \"type\": \"new\",\n  \"name\": \"esignature\",\n  \"logo_opacity\": \"0.5\",\n  \"location\": {\n    \"bottom_left\": {\n      \"x\": \"0\",\n      \"y\": \"0\"\n    },\n    \"top_right\": {\n      \"x\": \"216\",\n      \"y\": \"72\"\n    },\n    \"page\": \"1\"\n  },\n  \"display\": {\n    \"include_distinguished_name\": \"true\",\n    \"include_datetime\": \"true\",\n    \"contact\": \"My contact information\",\n    \"location\": \"My signing location\",\n    \"name\": \"John Doe\",\n    \"reason\": \"My reason for signing\"\n  }\n}",
         "options": {
-          "logoInputType": "inputFile",
-          "logoFileDataFieldName": "data_3"
+          "logo": {
+            "source": {
+              "inputType": "inputFile",
+              "fileDataFieldName": "data_3"
+            }
+          }
         },
         "requestOptions": {}
       },
@@ -2794,6 +2798,347 @@
       ],
       "id": "1c0f6511-fcab-4384-aa60-725798e712bf",
       "name": "Record Digitally Sign PDF Result"
+    },
+    {
+      "parameters": {
+        "operation": "sign",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "credentialType": "pfx",
+        "pfxCredentialInputType": "inputFile",
+        "pfxCredentialFileDataFieldName": "data_1",
+        "pfxPassphraseInputType": "inputFile",
+        "pfxPassphraseFileDataFieldName": "data_2",
+        "signatureConfiguration": "{\n  \"type\": \"new\",\n  \"name\": \"esignature\",\n  \"logo_opacity\": \"0.5\",\n  \"location\": {\n    \"bottom_left\": {\n      \"x\": \"0\",\n      \"y\": \"0\"\n    },\n    \"top_right\": {\n      \"x\": \"216\",\n      \"y\": \"72\"\n    },\n    \"page\": \"1\"\n  },\n  \"display\": {\n    \"include_distinguished_name\": \"true\",\n    \"include_datetime\": \"true\",\n    \"contact\": \"My contact information\",\n    \"location\": \"My signing location\",\n    \"name\": \"John Doe\",\n    \"reason\": \"My reason for signing\"\n  }\n}",
+        "options": {
+          "logoInputType": "inputFile",
+          "logoFileDataFieldName": "data_3"
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        12192
+      ],
+      "id": "38ab2789-4a5c-4b18-a582-5b42ae92b3b0",
+      "name": "Digitally Sign PDF (Legacy)",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Checks that workflows saved with the original flat Logo fields still include the signature logo.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -448,
+        12192
+      ],
+      "id": "46d6603e-7fdb-4081-ae4a-f736607902e9",
+      "name": "Record Digitally Sign PDF (Legacy) Result"
+    },
+    {
+      "parameters": {
+        "fileSelector": "test/fixtures/01-sample-pdf.pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        12544
+      ],
+      "id": "11b1847d-09c3-498a-bd78-6acaa65acf5f",
+      "name": "Read PDF for PostScript",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -912,
+        12736
+      ],
+      "id": "f1337357-fbe3-4ccf-8676-49552b5b57b7",
+      "name": "Record Read PDF for PostScript Error"
+    },
+    {
+      "parameters": {
+        "operation": "convertPostscript",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "options": {
+          "includeFileInfo": false
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        12544
+      ],
+      "id": "4ec95b00-e32c-4c63-aad1-273ec0fa9001",
+      "name": "Convert PDF to PostScript",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -464,
+        12544
+      ],
+      "id": "5f6119fa-18e6-4c7d-974b-da3d30e2c1d9",
+      "name": "Record Convert PDF to PostScript Result"
+    },
+    {
+      "parameters": {
+        "fileSelector": "test/fixtures/zugferd/factur-x-minimum.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        12960
+      ],
+      "id": "ac6ae03a-a725-4c8f-b84e-28eec85c0401",
+      "name": "Read Invoice XML for ZUGFeRD",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -912,
+        13152
+      ],
+      "id": "9165333d-42f0-4c59-a062-b40edf12177f",
+      "name": "Record Read Invoice XML Error"
+    },
+    {
+      "parameters": {
+        "operation": "createZugferd",
+        "options": {
+          "includeFileInfo": false,
+          "renderOptions": "{\n  \"logo_corner\": \"top-right\",\n  \"font\": \"Arial\",\n  \"bold_font\": \"Arial Bold\",\n  \"locale\": \"de-DE\",\n  \"label_language\": \"en\",\n  \"currency_display\": \"symbol\",\n  \"date_format\": \"dd.MM.yyyy\",\n  \"decimal_precision\": 2,\n  \"text_color_rgb\": [\n    26,\n    31,\n    41\n  ],\n  \"muted_text_color_cmyk\": [\n    10,\n    5,\n    0,\n    55\n  ],\n  \"accent_color_rgb\": [\n    20,\n    64,\n    115\n  ],\n  \"border_color_cmyk\": [\n    12,\n    7,\n    0,\n    20\n  ],\n  \"table_header_color_rgb\": [\n    20,\n    64,\n    115\n  ],\n  \"table_alternate_color_cmyk\": [\n    4,\n    2,\n    0,\n    2\n  ],\n  \"footer_message\": \"Thank you for your business.\"\n}"
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        12960
+      ],
+      "id": "cb35bf0a-5853-43e5-a175-a2308e01abb5",
+      "name": "Create ZUGFeRD PDF",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -688,
+        13152
+      ],
+      "id": "f91dbd99-ab02-4a3f-b87a-f3351b9bac85",
+      "name": "Record Create ZUGFeRD PDF Error"
+    },
+    {
+      "parameters": {
+        "operation": "validateZugferd",
+        "inputType": "resourceId",
+        "resourceId": "={{ $json.outputId }}",
+        "options": {
+          "includeFileInfo": false
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        12960
+      ],
+      "id": "a31cd633-c70e-4f64-8b99-7d4dd2c77d5f",
+      "name": "Validate Created ZUGFeRD PDF",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : $json.status === 'VALID' ? {} : { error: { node: $prevNode.name, details: { name: 'UnexpectedValidationStatus', message: 'ZUGFeRD validation did not return VALID', itemIndex: $itemIndex } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -464,
+        12960
+      ],
+      "id": "32514423-8aaa-45f0-a4d1-0908a3b32cc6",
+      "name": "Record ZUGFeRD Validation Result"
+    },
+    {
+      "parameters": {
+        "fileSelector": "test/fixtures/ps-joboptions/*",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1136,
+        13536
+      ],
+      "id": "f2d16a03-685b-40ef-adfe-fb9a3998b196",
+      "name": "Read PostScript and Job Options",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {
+          "includeBinaries": true
+        }
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        13536
+      ],
+      "id": "1782a2d6-8992-444c-8320-7ce8798a908e",
+      "name": "Aggregate PostScript and Job Options",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "convertToPdf",
+        "inputType": "inputFile",
+        "inputFileDataFieldName": "data",
+        "conversionType": "postscript",
+        "options": {
+          "jobOptions": {
+            "source": {
+              "inputType": "inputFile",
+              "fileDataFieldName": "data_1"
+            }
+          }
+        },
+        "requestOptions": {}
+      },
+      "type": "CUSTOM.pdfRest",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        13536
+      ],
+      "id": "9647fd77-9206-4939-ad2a-9477a014a7dd",
+      "name": "Convert PostScript With Job Options",
+      "credentials": {
+        "pdfRestApi": {
+          "id": "ON04bE7YVBE2OCC6",
+          "name": "pdfRest account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $input.item.error ? { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } : {} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -464,
+        13536
+      ],
+      "id": "19cc60df-f69d-42be-9f58-93402bf82a81",
+      "name": "Record PostScript With Job Options Result"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -912,
+        13728
+      ],
+      "id": "c7c22c37-2370-4066-a123-2cc126e5acee",
+      "name": "Record Read PostScript and Job Options Error"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { error: { node: $prevNode.name, details: { name: $input.item.error?.name, message: $input.item.error?.message, description: $input.item.error?.description, httpCode: $input.item.error?.httpCode, itemIndex: $itemIndex, responseMessage: typeof $input.item.error?.context?.data?.error === 'string' ? $input.item.error.context.data.error : undefined } } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -688,
+        13728
+      ],
+      "id": "f4aa7d02-1886-4ff0-b02d-3c47060569f6",
+      "name": "Record Aggregate PostScript and Job Options Error"
     }
   ],
   "connections": {
@@ -2867,6 +3212,21 @@
           },
           {
             "node": "Read Files From Disk for Signed PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read PDF for PostScript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Invoice XML for ZUGFeRD",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read PostScript and Job Options",
             "type": "main",
             "index": 0
           }
@@ -4960,6 +5320,11 @@
             "node": "Digitally Sign PDF",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Digitally Sign PDF (Legacy)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -4989,6 +5354,267 @@
             "node": "Merge Complex Results 2",
             "type": "main",
             "index": 3
+          }
+        ]
+      ]
+    },
+    "Read PDF for PostScript": {
+      "main": [
+        [
+          {
+            "node": "Convert PDF to PostScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Read PDF for PostScript Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PDF to PostScript": {
+      "main": [
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Convert PDF to PostScript Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Read PDF for PostScript Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Record Convert PDF to PostScript Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Read Invoice XML for ZUGFeRD": {
+      "main": [
+        [
+          {
+            "node": "Create ZUGFeRD PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Read Invoice XML Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ZUGFeRD PDF": {
+      "main": [
+        [
+          {
+            "node": "Validate Created ZUGFeRD PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Create ZUGFeRD PDF Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Created ZUGFeRD PDF": {
+      "main": [
+        [
+          {
+            "node": "Record ZUGFeRD Validation Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record ZUGFeRD Validation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Read Invoice XML Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Record Create ZUGFeRD PDF Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Record ZUGFeRD Validation Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Read PostScript and Job Options": {
+      "main": [
+        [
+          {
+            "node": "Aggregate PostScript and Job Options",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Read PostScript and Job Options Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate PostScript and Job Options": {
+      "main": [
+        [
+          {
+            "node": "Convert PostScript With Job Options",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Aggregate PostScript and Job Options Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert PostScript With Job Options": {
+      "main": [
+        [
+          {
+            "node": "Record PostScript With Job Options Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record PostScript With Job Options Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record PostScript With Job Options Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Record Read PostScript and Job Options Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Record Aggregate PostScript and Job Options Error": {
+      "main": [
+        [
+          {
+            "node": "Merge Single-Input Results 4",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Digitally Sign PDF (Legacy)": {
+      "main": [
+        [
+          {
+            "node": "Record Digitally Sign PDF (Legacy) Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Digitally Sign PDF (Legacy) Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Digitally Sign PDF (Legacy) Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Complex Results 2",
+            "type": "main",
+            "index": 4
           }
         ]
       ]

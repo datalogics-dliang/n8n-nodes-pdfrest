@@ -1,5 +1,6 @@
 import {
 	displayParameter,
+	getNodeParameters,
 	type IExecuteSingleFunctions,
 	type IHttpRequestOptions,
 } from 'n8n-workflow';
@@ -16,6 +17,10 @@ function getField(name: string) {
 
 function getOptionalField(name: string) {
 	return getField('options')?.options?.find((field) => field.name === name);
+}
+
+function getJobOptionsField(name: string) {
+	return getOptionalField('jobOptions')?.options?.[0]?.values?.find((field) => field.name === name);
 }
 
 function getVisibleOptionalFieldNames(conversionType: string) {
@@ -41,6 +46,7 @@ function branchContext(inputType: string, conversionType: string): IExecuteSingl
 	return {
 		...executionContext,
 		getNodeParameter: (name: string, fallback: unknown) => {
+			if (name === 'options') return {};
 			if (name === 'inputType') {
 				expect(fallback).toBe('inputFile');
 				return inputType;
@@ -48,6 +54,10 @@ function branchContext(inputType: string, conversionType: string): IExecuteSingl
 			if (name === 'conversionType') {
 				expect(fallback).toBe('');
 				return conversionType;
+			}
+			if (name === 'jobOptionsInputType') {
+				expect(fallback).toBe('none');
+				return 'none';
 			}
 			throw new Error(`Unexpected parameter ${name}`);
 		},
@@ -156,6 +166,90 @@ describe('Convert to PDF operation', () => {
 		expect(getField('conversionType')?.routing?.send?.preSend).toHaveLength(1);
 	});
 
+	it('groups optional job options for PostScript or EPS file inputs', () => {
+		expect(getField('jobOptionsInputType')).toBeUndefined();
+		expect(getOptionalField('jobOptions')).toMatchObject({
+			displayName: 'Job Options',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: false },
+			default: { source: { inputType: 'inputFile', fileDataFieldName: 'data' } },
+			displayOptions: {
+				show: {
+					'/conversionType': ['postscript'],
+					'/inputType': ['inputFile', 'resourceId'],
+				},
+			},
+		});
+		expect(getOptionalField('jobOptions')?.options?.[0]?.values?.[0]).toMatchObject({
+			displayName:
+				'A .joboptions file controls PostScript conversion settings. Remove this field to use default settings.',
+			name: 'jobOptionsNotice',
+			type: 'notice',
+		});
+		expect(getJobOptionsField('inputType')).toMatchObject({
+			displayName: 'Input Source',
+			type: 'options',
+			options: [
+				{ name: 'Input File', value: 'inputFile' },
+				{ name: 'Resource ID', value: 'resourceId' },
+			],
+			default: 'inputFile',
+		});
+		expect(getJobOptionsField('fileDataFieldName')).toMatchObject({
+			displayName: 'Job Options Input File Data Field Name',
+			default: 'data',
+			required: true,
+			displayOptions: { show: { '/options.jobOptions.source.inputType': ['inputFile', undefined] } },
+			routing: { send: { type: 'body', property: 'job_options' } },
+		});
+		expect(getJobOptionsField('resourceId')).toMatchObject({
+			displayName: 'Job Options Resource ID',
+			default: '',
+			required: true,
+			displayOptions: { show: { '/options.jobOptions.source.inputType': ['resourceId'] } },
+			routing: { send: { type: 'body', property: 'job_options_id' } },
+		});
+		const jobOptionsInput = (inputType: string) => ({
+			inputType: inputType === 'inputFile' ? 'resourceId' : 'inputFile',
+			options: { jobOptions: { source: { inputType } } },
+		});
+		expect(displayParameter(jobOptionsInput('inputFile'), getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(true);
+		expect(displayParameter(jobOptionsInput('inputFile'), getJobOptionsField('resourceId')!, null, undefined)).toBe(false);
+		expect(displayParameter(jobOptionsInput('resourceId'), getJobOptionsField('fileDataFieldName')!, null, undefined)).toBe(false);
+		expect(displayParameter(jobOptionsInput('resourceId'), getJobOptionsField('resourceId')!, null, undefined)).toBe(true);
+		const jobOptions = getOptionalField('jobOptions');
+		expect(
+			displayParameter(
+				{ inputType: 'resourceId', conversionType: 'postscript' },
+				jobOptions!,
+				null,
+				undefined,
+			),
+		).toBe(true);
+		const parameters = {
+			jobOptions: { source: { inputType: 'resourceId', resourceId: 'profile-id' } },
+		};
+		expect(
+			getNodeParameters([jobOptions!], parameters, false, true, null, undefined, {
+				nodeValuesRoot: { options: parameters },
+			}),
+		).toEqual(parameters);
+		const fileParameters = {
+			jobOptions: { source: { inputType: 'inputFile', fileDataFieldName: 'profile' } },
+		};
+		expect(
+			getNodeParameters(
+				[jobOptions!],
+				fileParameters,
+				false,
+				true,
+				null,
+				undefined,
+				{ nodeValuesRoot: { options: fileParameters } },
+			),
+		).toEqual({ jobOptions: { source: { fileDataFieldName: 'profile' } } });
+	});
+
 	it('declares every optional request field in display-label order', () => {
 		expect(getField('options')).toMatchObject({
 			displayName: 'Optional Fields',
@@ -169,6 +263,7 @@ describe('Convert to PDF operation', () => {
 			'includeFileInfo',
 			'imageFileDataFieldNames',
 			'imageResourceIds',
+			'jobOptions',
 			'locale',
 			'output',
 			'pageMargin',
@@ -299,6 +394,7 @@ describe('Convert to PDF operation', () => {
 		expect(getOptionalField('structuredTextOptions')).toMatchObject({
 			displayName: 'Structured Text Options',
 			type: 'json',
+			hint: 'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
 			displayOptions: { show: structuredVisibility },
 			routing: { send: { type: 'body', property: 'structured_text_options' } },
 		});
@@ -310,19 +406,7 @@ describe('Convert to PDF operation', () => {
 			enable_tagging: true,
 		});
 		expect(getOptionalField('structuredTextOptionsNotice')).toBeUndefined();
-		expect(getField('structuredTextOptionsNotice')).toMatchObject({
-			displayName:
-				'Structured Text Options documentation: <a href="https://docs.pdfrest.com/pdfrest-api-toolkit-cloud/api-reference-guide/tool/convert-to-pdf/POST/pdf.body.structured_text_options/" target="_blank">Learn how to build the object</a>',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: ['convertToPdf'],
-					conversionType: ['csv', 'json', 'markdown', 'plainText', 'xml'],
-					'/options.structuredTextOptions': [{ _cnd: { exists: true } }],
-				},
-			},
-		});
+		expect(getField('structuredTextOptionsNotice')).toBeUndefined();
 		expect(getOptionalField('imageFileDataFieldNames')).toMatchObject({
 			displayName: 'Image Input File Data Field Name',
 			type: 'string',
@@ -343,21 +427,6 @@ describe('Convert to PDF operation', () => {
 			displayOptions: { show: { '/conversionType': ['markdown'] } },
 			routing: { send: { type: 'body', property: 'image_ids' } },
 		});
-	});
-
-	it('couples the documentation notice to the selected structured-text field', () => {
-		const notice = getField('structuredTextOptionsNotice');
-		const isVisible = (conversionType: string, options: Record<string, unknown>) =>
-			displayParameter(
-				{ operation: 'convertToPdf', conversionType, options },
-				notice!,
-				null,
-				undefined,
-			);
-
-		expect(isVisible('markdown', {})).toBe(false);
-		expect(isVisible('markdown', { structuredTextOptions: '{"title":"Example"}' })).toBe(true);
-		expect(isVisible('html', { structuredTextOptions: '{"title":"Example"}' })).toBe(false);
 	});
 
 	it('changes format-specific optional fields with the selected input format', () => {
@@ -421,6 +490,7 @@ describe('Convert to PDF operation', () => {
 			'compression',
 			'downsample',
 			'includeFileInfo',
+			'jobOptions',
 			'output',
 			'responseType',
 		]);
@@ -477,6 +547,151 @@ describe('Convert to PDF operation', () => {
 			await preSend?.call(branchContext('resourceId', conversionType), request);
 			expect(request.body).toEqual({ id: 'resource-id', ...expectedOptions });
 		}
+	});
+
+	it('keeps only the selected PostScript job options branch', async () => {
+		const preSend = getField('conversionType')?.routing?.send?.preSend?.[0];
+		const withJobOptions = (jobOptionsInputType: string) =>
+			({
+				...executionContext,
+				getNodeParameter: (name: string, fallback: unknown) =>
+					({
+						options:
+							jobOptionsInputType === 'none'
+								? {}
+								: { jobOptions: { source: { inputType: jobOptionsInputType } } },
+						inputType: 'resourceId',
+						conversionType: 'postscript',
+						'options.jobOptions.source.inputType': jobOptionsInputType,
+						'options.jobOptions.source.fileDataFieldName':
+							jobOptionsInputType === 'inputFile' ? 'profile' : '',
+						'options.jobOptions.source.resourceId':
+							jobOptionsInputType === 'resourceId' ? 'profile-id' : '',
+						jobOptionsInputType: 'none',
+					})[
+						name as
+							| 'options'
+							| 'inputType'
+							| 'conversionType'
+							| 'options.jobOptions.source.inputType'
+							| 'options.jobOptions.source.fileDataFieldName'
+							| 'options.jobOptions.source.resourceId'
+							| 'jobOptionsInputType'
+					] ?? fallback,
+			}) as IExecuteSingleFunctions;
+		const resourceRequest: IHttpRequestOptions = {
+			url: '/pdf',
+			body: { id: 'source-id', job_options: 'stale', job_options_id: 'profile-id' },
+		};
+		await preSend?.call(withJobOptions('resourceId'), resourceRequest);
+		expect(resourceRequest.body).toEqual({ id: 'source-id', job_options_id: 'profile-id' });
+		await expect(
+			preSend?.call(withJobOptions('invalid'), {
+				url: '/pdf',
+				body: { id: 'source-id', job_options: 'profile', job_options_id: 'profile-id' },
+			}),
+		).rejects.toThrow('Job Options Input Source has an invalid value');
+		const defaultRequest: IHttpRequestOptions = {
+			url: '/pdf',
+			body: { id: 'source-id', job_options: 'stale', job_options_id: 'stale' },
+		};
+		await preSend?.call(withJobOptions('none'), defaultRequest);
+		expect(defaultRequest.body).toEqual({ id: 'source-id' });
+		await expect(
+			preSend?.call(withJobOptions('resourceId'), {
+				url: '/pdf',
+				body: { id: 'source-id', job_options_id: '' },
+			}),
+		).rejects.toThrow('Job Options Resource ID is required');
+		const inactiveRequest: IHttpRequestOptions = {
+			url: '/pdf',
+			body: { id: 'source-id', job_options_id: 'stale', job_options: 'stale' },
+		};
+		await preSend?.call(branchContext('resourceId', 'word'), inactiveRequest);
+		expect(inactiveRequest.body).toEqual({ id: 'source-id' });
+
+		const legacyContext = {
+			...executionContext,
+			getNodeParameter: (name: string, fallback: unknown) =>
+				({
+					options: {},
+					inputType: 'resourceId',
+					conversionType: 'postscript',
+					jobOptionsInputType: 'resourceId',
+					jobOptionsResourceId: 'legacy-profile-id',
+				})[name as 'options' | 'inputType' | 'conversionType' | 'jobOptionsInputType' | 'jobOptionsResourceId'] ?? fallback,
+		} as IExecuteSingleFunctions;
+		const legacyRequest: IHttpRequestOptions = { url: '/pdf', body: { id: 'source-id' } };
+		await preSend?.call(legacyContext, legacyRequest);
+		expect(legacyRequest.body).toEqual({ id: 'source-id', job_options_id: 'legacy-profile-id' });
+	});
+
+	it('sends uploaded job options as multipart with the PostScript input', async () => {
+		const parameters: Record<string, unknown> = {
+			options: { jobOptions: { source: { inputType: 'inputFile', fileDataFieldName: 'profile' } } },
+			inputType: 'inputFile',
+			conversionType: 'postscript',
+			inputFileDataFieldName: 'source',
+			'options.jobOptions.source.inputType': 'inputFile',
+			'options.jobOptions.source.fileDataFieldName': 'profile',
+		};
+		const context = {
+			...executionContext,
+			getNodeParameter: (name: string, fallback?: unknown) => parameters[name] ?? fallback,
+			helpers: {
+				assertBinaryData: (name: string) => ({
+					fileName: name === 'source' ? 'input.ps' : 'custom.joboptions',
+					mimeType: 'application/octet-stream',
+				}),
+				getBinaryDataBuffer: async (name: string) => Buffer.from(name),
+			},
+		} as unknown as IExecuteSingleFunctions;
+		const request: IHttpRequestOptions = {
+			url: '/pdf',
+			headers: { 'Content-Type': 'application/json' },
+			body: { file: 'source', job_options: 'profile', job_options_id: 'stale' },
+		};
+		await getField('conversionType')?.routing?.send?.preSend?.[0]?.call(context, request);
+		await getField('inputFileDataFieldName')?.routing?.send?.preSend?.[0]?.call(context, request);
+		await getJobOptionsField('fileDataFieldName')?.routing?.send?.preSend?.[0]?.call(
+			context,
+			request,
+		);
+		await createDeferredMultipartUploadsPreSend().call(context, request);
+		const body = request.body as FormData;
+		expect(body.get('file')).toBeInstanceOf(Blob);
+		expect(body.get('job_options')).toBeInstanceOf(Blob);
+		expect(body.has('job_options_id')).toBe(false);
+		expect(request.headers).not.toHaveProperty('Content-Type');
+
+		const legacyParameters = {
+			...parameters,
+			options: {},
+			jobOptionsInputType: 'inputFile',
+			jobOptionsFileDataFieldName: 'profile',
+		};
+		const legacyContext = {
+			...context,
+			getNodeParameter: (name: string, fallback?: unknown) =>
+				legacyParameters[name as keyof typeof legacyParameters] ?? fallback,
+		} as IExecuteSingleFunctions;
+		const legacyRequest: IHttpRequestOptions = {
+			url: '/pdf',
+			headers: { 'Content-Type': 'application/json' },
+			body: { file: 'source' },
+		};
+		await getField('conversionType')?.routing?.send?.preSend?.[0]?.call(
+			legacyContext,
+			legacyRequest,
+		);
+		await getField('inputFileDataFieldName')?.routing?.send?.preSend?.[0]?.call(
+			legacyContext,
+			legacyRequest,
+		);
+		await createDeferredMultipartUploadsPreSend().call(legacyContext, legacyRequest);
+		const legacyBody = legacyRequest.body as FormData;
+		expect(legacyBody.get('file')).toBeInstanceOf(Blob);
+		expect(legacyBody.get('job_options')).toBeInstanceOf(Blob);
 	});
 
 	it('accepts typed structured-text JSON and rejects non-object values', async () => {
@@ -674,9 +889,14 @@ describe('Convert to PDF operation', () => {
 
 		const bodyProperties = convertToPdfDescription.flatMap((field) => [
 			...(field.routing?.send?.type === 'body' ? [field.routing.send.property] : []),
-			...(field.options ?? []).flatMap((option) =>
-				option.routing?.send?.type === 'body' ? [option.routing.send.property] : [],
-			),
+			...(field.options ?? []).flatMap((option) => [
+				...(option.routing?.send?.type === 'body' ? [option.routing.send.property] : []),
+				...(option.options ?? []).flatMap((group) =>
+					(group.values ?? []).flatMap((value) =>
+						value.routing?.send?.type === 'body' ? [value.routing.send.property] : [],
+					),
+				),
+			]),
 		]);
 		expect(bodyProperties).toEqual([
 			'id',
@@ -686,6 +906,8 @@ describe('Convert to PDF operation', () => {
 			'downsample',
 			'image_files',
 			'image_ids',
+			'job_options_id',
+			'job_options',
 			'locale',
 			'output',
 			'page_margin',

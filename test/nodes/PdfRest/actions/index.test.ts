@@ -6,7 +6,7 @@ describe('pdfRest description', () => {
 		const operation = pdfRestDescription.find((field) => field.name === 'operation');
 		const options = operation?.options ?? [];
 
-		expect(options).toHaveLength(54);
+		expect(options).toHaveLength(57);
 		expect(options.map((option) => option.action)).toEqual([
 			'Analyze · Summarize PDF (AI)',
 			'Analyze · Translate PDF (AI)',
@@ -19,9 +19,12 @@ describe('pdfRest description', () => {
 			'Convert · PDF to PDF/A (Archival)',
 			'Convert · PDF to PDF/X (Print)',
 			'Convert · PDF to PNG Images',
+			'Convert · PDF to PostScript',
 			'Convert · PDF to PowerPoint (PPTX)',
 			'Convert · PDF to TIFF Images',
 			'Convert · PDF to Word (DOCX)',
+			'E-Invoicing · Create ZUGFeRD / Factur-X PDF Invoice',
+			'E-Invoicing · Validate ZUGFeRD / Factur-X PDF Invoice',
 			'Extract · Images from PDF',
 			'Extract · OCR PDF (Make Searchable)',
 			'Extract · Query PDF Info (Metadata)',
@@ -68,7 +71,7 @@ describe('pdfRest description', () => {
 	it('uses exactly one Input File-default source selector for every eligible operation', () => {
 		const selectors = pdfRestDescription.filter((field) => field.name === 'inputType');
 
-		expect(selectors).toHaveLength(48);
+		expect(selectors).toHaveLength(51);
 		for (const selector of selectors) {
 			expect(selector.default).toBe('inputFile');
 		}
@@ -79,7 +82,7 @@ describe('pdfRest description', () => {
 			}
 			return counts;
 		}, {});
-		expect(Object.values(selectorCounts)).toEqual(new Array(48).fill(1));
+		expect(Object.values(selectorCounts)).toEqual(new Array(51).fill(1));
 	});
 
 	it('sorts operations alphabetically by bucketed action text', () => {
@@ -93,7 +96,7 @@ describe('pdfRest description', () => {
 		const operation = pdfRestDescription.find((field) => field.name === 'operation');
 		const options = operation?.options ?? [];
 
-		expect(options).toHaveLength(54);
+		expect(options).toHaveLength(57);
 		for (const option of options) {
 			expect(option.description, `${String(option.name)} description`).toEqual(expect.any(String));
 			expect(
@@ -153,8 +156,8 @@ describe('pdfRest description', () => {
 			(field) => field.displayOptions?.show?.operation ?? [],
 		);
 
-		expect(downloadFields).toHaveLength(48);
-		expect(operationsWithDownloads).toHaveLength(48);
+		expect(downloadFields).toHaveLength(50);
+		expect(operationsWithDownloads).toHaveLength(50);
 		expect(operationsWithDownloads).not.toEqual(
 			expect.arrayContaining([
 				'deleteResource',
@@ -163,6 +166,7 @@ describe('pdfRest description', () => {
 				'getResource',
 				'pdfInfo',
 				'upload',
+				'validateZugferd',
 			]),
 		);
 

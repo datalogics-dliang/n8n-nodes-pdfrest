@@ -70,6 +70,7 @@ function runOnlyForCustomProfileFile(preSend: PreSendAction): PreSendAction {
 function createCompressionProfileFields(): INodeProperties[] {
 	return createSecondaryFileInputSourceFields({
 		displayName: 'Profile Input Source',
+		description: 'Choose a custom JSON compression profile from this workflow or one already stored by pdfRest',
 		operation: 'compress',
 		show: { compressionLevel: ['custom'] },
 		inputTypeName: 'profileInputType',

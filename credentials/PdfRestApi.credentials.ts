@@ -141,11 +141,12 @@ export class PdfRestApi implements ICredentialType {
 		const headers = { ...requestOptions.headers };
 
 		for (const name of Object.keys(headers)) {
-			if (name.toLowerCase() === 'api-key') delete headers[name];
+			if (name.toLowerCase() === 'api-key' || name.toLowerCase() === 'wsn') delete headers[name];
 		}
 		if (credentials.baseUrl !== CUSTOM_BASE_URL) {
 			headers['Api-Key'] = String(credentials.apiKey ?? '');
 		}
+		headers.wsn = 'n8n';
 
 		requestOptions.headers = headers;
 		return requestOptions;

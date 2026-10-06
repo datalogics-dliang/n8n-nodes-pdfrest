@@ -21,6 +21,7 @@ const operationsWithoutOutputDownloads = new Set([
 	'getRequestStatus',
 	'pdfInfo',
 	'upload',
+	'validateZugferd',
 ]);
 const multipleOutputFileOperations = new Set([
 	'convertBmp',
