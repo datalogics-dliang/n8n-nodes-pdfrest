@@ -212,6 +212,11 @@ jobs:
       - name: Install verification npm CLI
         run: npm install --global npm@11.19.0
 
+      - name: Wait for complete npm package availability
+        env:
+          PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: node scripts/release/wait-for-published-package.mjs "$PACKAGE_VERSION"
+
       - name: Verify release provenance
         env:
           PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}

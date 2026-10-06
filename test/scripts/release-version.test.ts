@@ -51,6 +51,16 @@ describe('GitHub Release version', () => {
 			expect(job).toContain('PACKAGE_VERSION: ${{ needs.validate-tag.outputs.version }}');
 		}
 	});
+	it('waits for the published package before provenance verification and scanning', () => {
+		const job = publishWorkflow.split('\n  verify-published:\n')[1];
+		expect(job).toContain('Wait for complete npm package availability');
+		expect(job.indexOf('Wait for complete npm package availability')).toBeLessThan(
+			job.indexOf('Verify release provenance'),
+		);
+		expect(job.indexOf('Verify release provenance')).toBeLessThan(
+			job.indexOf('Run n8n community package scan'),
+		);
+	});
 	it.each(['0.1.1', '1.1.2'])(
 		'updates both manifests from %s without executing lifecycle scripts',
 		async (initialVersion) => {
