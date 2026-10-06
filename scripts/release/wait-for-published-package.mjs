@@ -7,6 +7,10 @@ function isTransientStatus(status) {
 	return status === 404 || status === 429 || status >= 500;
 }
 
+function isTransientTransportError(error) {
+	return error?.name === 'TimeoutError' || error?.name === 'TypeError';
+}
+
 function registryUrl(value, field) {
 	const url = new URL(value);
 	if (url.origin !== registryOrigin || url.username || url.password) {
@@ -22,7 +26,7 @@ async function responseFor(url, options, fetchImpl) {
 		if (isTransientStatus(response.status)) return undefined;
 		throw new Error(`Registry request failed with HTTP ${response.status}`);
 	} catch (error) {
-		if (error.name === 'TimeoutError' || error.name === 'TypeError') return undefined;
+		if (isTransientTransportError(error)) return undefined;
 		throw error;
 	}
 }
@@ -34,7 +38,13 @@ export async function publishedPackageIsAvailable(version, fetchImpl = fetch) {
 		fetchImpl,
 	);
 	if (!manifest) return false;
-	const body = await manifest.json();
+	let body;
+	try {
+		body = await manifest.json();
+	} catch (error) {
+		if (isTransientTransportError(error)) return false;
+		throw error;
+	}
 	if (body.name !== packageName || body.version !== version) {
 		throw new Error('Published package name or version does not match the release');
 	}
