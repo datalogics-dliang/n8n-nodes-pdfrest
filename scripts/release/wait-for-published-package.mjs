@@ -38,6 +38,7 @@ export async function publishedPackageIsAvailable(version, fetchImpl = fetch) {
 	if (body.name !== packageName || body.version !== version) {
 		throw new Error('Published package name or version does not match the release');
 	}
+	if (!body.dist?.attestations?.url || !body.dist?.tarball) return false;
 	const attestation = registryUrl(body.dist?.attestations?.url, 'attestation');
 	const tarball = registryUrl(body.dist?.tarball, 'tarball');
 	return Boolean(

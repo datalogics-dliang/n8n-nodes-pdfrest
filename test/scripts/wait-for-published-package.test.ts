@@ -53,6 +53,21 @@ describe('published package availability', () => {
 		await waitForPublishedPackage(version, { fetchImpl: fetch, sleep });
 		expect(sleep).toHaveBeenCalledOnce();
 	});
+	it('waits for attestation metadata to appear in the manifest', async () => {
+		let manifestAttempts = 0;
+		const fetch = vi.fn(async (url: URL | string) => {
+			if (String(url) === manifestUrl) {
+				const manifest = packageManifest();
+				if (manifestAttempts++ === 0) delete (manifest.dist.attestations as { url?: string }).url;
+				return response(200, manifest);
+			}
+			return response(200);
+		});
+		const sleep = vi.fn().mockResolvedValue(undefined);
+		await waitForPublishedPackage(version, { fetchImpl: fetch, sleep });
+		expect(sleep).toHaveBeenCalledOnce();
+		expect(manifestAttempts).toBe(2);
+	});
 	it('fails immediately for a non-transient registry response', async () => {
 		await expect(
 			publishedPackageIsAvailable(version, vi.fn().mockResolvedValue(response(401))),
